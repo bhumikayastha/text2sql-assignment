@@ -1,0 +1,990 @@
+[
+  {
+    "num": 1,
+    "question": "List all products",
+    "sql": "SELECT *\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 2,
+    "question": "Get all customers",
+    "sql": "SELECT *\nFROM customers c;",
+    "decomposition": {
+      "intent": "Retrieve records from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 3,
+    "question": "Show all orders",
+    "sql": "SELECT *\nFROM orders o;",
+    "decomposition": {
+      "intent": "Retrieve records from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 4,
+    "question": "List all employees",
+    "sql": "SELECT *\nFROM employees e;",
+    "decomposition": {
+      "intent": "Retrieve records from employees",
+      "tables": [
+        "employees"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 5,
+    "question": "Get all offices",
+    "sql": "SELECT *\nFROM offices of;",
+    "decomposition": {
+      "intent": "Retrieve records from offices",
+      "tables": [
+        "offices"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 6,
+    "question": "Show all product lines",
+    "sql": "SELECT *\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 7,
+    "question": "List all payments",
+    "sql": "SELECT *\nFROM payments pay;",
+    "decomposition": {
+      "intent": "Retrieve records from payments",
+      "tables": [
+        "payments"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 8,
+    "question": "Get product names and prices",
+    "sql": "SELECT \"productName\", \"buyPrice\"\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "\"productName\", \"buyPrice\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 9,
+    "question": "Get customer names and cities",
+    "sql": "SELECT \"customerName\", city\nFROM customers c;",
+    "decomposition": {
+      "intent": "Retrieve records from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "\"customerName\", city"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 10,
+    "question": "List employee first and last names",
+    "sql": "SELECT \"firstName\", \"lastName\"\nFROM employees e;",
+    "decomposition": {
+      "intent": "Retrieve records from employees",
+      "tables": [
+        "employees"
+      ],
+      "columns": [
+        "\"firstName\", \"lastName\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 11,
+    "question": "Get all order dates",
+    "sql": "SELECT \"orderNumber\", \"orderDate\"\nFROM orders o;",
+    "decomposition": {
+      "intent": "Retrieve records from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "\"orderNumber\", \"orderDate\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 12,
+    "question": "Show product vendor list",
+    "sql": "SELECT DISTINCT \"productVendor\"\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "DISTINCT \"productVendor\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 13,
+    "question": "Get all product codes",
+    "sql": "SELECT \"productCode\"\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "\"productCode\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 14,
+    "question": "List all countries from offices",
+    "sql": "SELECT COUNT(\"officeCode\") AS total_offices\nFROM offices of;",
+    "decomposition": {
+      "intent": "Get single COUNT value from offices",
+      "tables": [
+        "offices"
+      ],
+      "columns": [
+        "COUNT(\"officeCode\") AS total_offices"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 15,
+    "question": "Show all order statuses",
+    "sql": "SELECT DISTINCT status\nFROM orders o;",
+    "decomposition": {
+      "intent": "Retrieve records from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "DISTINCT status"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 16,
+    "question": "Get all payment amounts",
+    "sql": "SELECT \"checkNumber\", amount\nFROM payments pay;",
+    "decomposition": {
+      "intent": "Retrieve records from payments",
+      "tables": [
+        "payments"
+      ],
+      "columns": [
+        "\"checkNumber\", amount"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 17,
+    "question": "List all job titles",
+    "sql": "SELECT DISTINCT \"jobTitle\"\nFROM employees e;",
+    "decomposition": {
+      "intent": "Retrieve records from employees",
+      "tables": [
+        "employees"
+      ],
+      "columns": [
+        "DISTINCT \"jobTitle\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 18,
+    "question": "Get customer phone numbers",
+    "sql": "SELECT \"customerName\", phone\nFROM customers c;",
+    "decomposition": {
+      "intent": "Retrieve records from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "\"customerName\", phone"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 19,
+    "question": "Show product MSRP values",
+    "sql": "SELECT \"productName\", \"MSRP\"\nFROM products p;",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "\"productName\", \"MSRP\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 20,
+    "question": "List order numbers",
+    "sql": "SELECT \"orderNumber\"\nFROM orders o;",
+    "decomposition": {
+      "intent": "Retrieve records from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "\"orderNumber\""
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 21,
+    "question": "Get orders with customer names",
+    "sql": "SELECT c.*, o.*\nFROM customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from customers + orders",
+      "tables": [
+        "customers",
+        "orders"
+      ],
+      "columns": [
+        "c.*, o.*"
+      ],
+      "filters": [],
+      "joins": [
+        "customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 22,
+    "question": "Get employees with office city",
+    "sql": "SELECT e.\"firstName\", e.\"lastName\", of.city\nFROM employees e JOIN offices of ON e.\"officeCode\" = of.\"officeCode\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from employees + offices",
+      "tables": [
+        "employees",
+        "offices"
+      ],
+      "columns": [
+        "e.\"firstName\", e.\"lastName\", of.city"
+      ],
+      "filters": [],
+      "joins": [
+        "employees e JOIN offices of ON e.\"officeCode\" = of.\"officeCode\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 23,
+    "question": "Get payments with customer names",
+    "sql": "SELECT c.\"customerName\", pay.\"paymentDate\", pay.amount\nFROM payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from payments + customers",
+      "tables": [
+        "payments",
+        "customers"
+      ],
+      "columns": [
+        "c.\"customerName\", pay.\"paymentDate\", pay.amount"
+      ],
+      "filters": [],
+      "joins": [
+        "payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 24,
+    "question": "Get order details with product names",
+    "sql": "SELECT od.\"orderNumber\", p.\"productName\", od.\"quantityOrdered\"\nFROM orderdetails od JOIN products p ON od.\"productCode\" = p.\"productCode\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from orderdetails + products",
+      "tables": [
+        "orderdetails",
+        "products"
+      ],
+      "columns": [
+        "od.\"orderNumber\", p.\"productName\", od.\"quantityOrdered\""
+      ],
+      "filters": [],
+      "joins": [
+        "orderdetails od JOIN products p ON od.\"productCode\" = p.\"productCode\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 25,
+    "question": "Get products with product line description",
+    "sql": "SELECT p.\"productName\", pl.\"textDescription\"\nFROM products p JOIN productlines pl ON p.\"productLine\" = pl.\"productLine\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from products + productlines",
+      "tables": [
+        "products",
+        "productlines"
+      ],
+      "columns": [
+        "p.\"productName\", pl.\"textDescription\""
+      ],
+      "filters": [],
+      "joins": [
+        "products p JOIN productlines pl ON p.\"productLine\" = pl.\"productLine\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 26,
+    "question": "Get customers with sales rep names",
+    "sql": "SELECT c.\"customerName\", e.\"firstName\", e.\"lastName\"\nFROM customers c JOIN employees e ON c.\"salesRepEmployeeNumber\" = e.\"employeeNumber\"\nWHERE \"jobTitle\" = 'Sales Rep';",
+    "decomposition": {
+      "intent": "Retrieve joined data from customers + employees",
+      "tables": [
+        "customers",
+        "employees"
+      ],
+      "columns": [
+        "c.\"customerName\", e.\"firstName\", e.\"lastName\""
+      ],
+      "filters": [
+        "\"jobTitle\" = 'Sales Rep'"
+      ],
+      "joins": [
+        "customers c JOIN employees e ON c.\"salesRepEmployeeNumber\" = e.\"employeeNumber\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": "\"jobTitle\" = 'Sales Rep'"
+    }
+  },
+  {
+    "num": 27,
+    "question": "Get orders with customer city",
+    "sql": "SELECT c.*, o.*\nFROM customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from customers + orders",
+      "tables": [
+        "customers",
+        "orders"
+      ],
+      "columns": [
+        "c.*, o.*"
+      ],
+      "filters": [],
+      "joins": [
+        "customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 28,
+    "question": "Get employees and their manager",
+    "sql": "SELECT *\nFROM employees e;",
+    "decomposition": {
+      "intent": "Retrieve records from employees",
+      "tables": [
+        "employees"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 29,
+    "question": "Get orderdetails with product vendor",
+    "sql": "SELECT od.\"orderNumber\", p.\"productName\", od.\"quantityOrdered\"\nFROM orderdetails od JOIN products p ON od.\"productCode\" = p.\"productCode\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from orderdetails + products",
+      "tables": [
+        "orderdetails",
+        "products"
+      ],
+      "columns": [
+        "od.\"orderNumber\", p.\"productName\", od.\"quantityOrdered\""
+      ],
+      "filters": [],
+      "joins": [
+        "orderdetails od JOIN products p ON od.\"productCode\" = p.\"productCode\""
+      ],
+      "group_by": "",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 30,
+    "question": "Get payments with customer country",
+    "sql": "SELECT c.\"customerName\", pay.\"paymentDate\", pay.amount\nFROM payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\";",
+    "decomposition": {
+      "intent": "Get single COUNT value from payments, customers",
+      "tables": [
+        "payments",
+        "customers"
+      ],
+      "columns": [
+        "c.\"customerName\", pay.\"paymentDate\", pay.amount"
+      ],
+      "filters": [],
+      "joins": [
+        "payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\""
+      ],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 31,
+    "question": "Count customers per country",
+    "sql": "SELECT country, COUNT(\"customerNumber\") AS total\nFROM customers c\nGROUP BY country;",
+    "decomposition": {
+      "intent": "COUNT grouped by country from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "country, COUNT(\"customerNumber\") AS total"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "country",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 32,
+    "question": "Total payments per customer",
+    "sql": "SELECT c.\"customerName\", pay.\"paymentDate\", pay.amount\nFROM payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\"\nGROUP BY \"customerNumber\";",
+    "decomposition": {
+      "intent": "SUM grouped by \"customerNumber\" from payments, customers",
+      "tables": [
+        "payments",
+        "customers"
+      ],
+      "columns": [
+        "c.\"customerName\", pay.\"paymentDate\", pay.amount"
+      ],
+      "filters": [],
+      "joins": [
+        "payments pay JOIN customers c ON pay.\"customerNumber\" = c.\"customerNumber\""
+      ],
+      "group_by": "\"customerNumber\"",
+      "_agg": "SUM",
+      "_where": ""
+    }
+  },
+  {
+    "num": 33,
+    "question": "Number of orders per status",
+    "sql": "SELECT status, COUNT(\"orderNumber\") AS total\nFROM orders o\nGROUP BY status;",
+    "decomposition": {
+      "intent": "COUNT grouped by status from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "status, COUNT(\"orderNumber\") AS total"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "status",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 34,
+    "question": "Products per product line",
+    "sql": "SELECT *\nFROM products p\nGROUP BY \"productLine\";",
+    "decomposition": {
+      "intent": "Retrieve records from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "\"productLine\"",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 35,
+    "question": "Employees per office",
+    "sql": "SELECT e.\"firstName\", e.\"lastName\", of.city\nFROM employees e JOIN offices of ON e.\"officeCode\" = of.\"officeCode\"\nGROUP BY \"officeCode\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from employees + offices",
+      "tables": [
+        "employees",
+        "offices"
+      ],
+      "columns": [
+        "e.\"firstName\", e.\"lastName\", of.city"
+      ],
+      "filters": [],
+      "joins": [
+        "employees e JOIN offices of ON e.\"officeCode\" = of.\"officeCode\""
+      ],
+      "group_by": "\"officeCode\"",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 36,
+    "question": "Total stock per product vendor",
+    "sql": "SELECT SUM(\"quantityInStock\") AS total_stock\nFROM products p;",
+    "decomposition": {
+      "intent": "Get single SUM value from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "SUM(\"quantityInStock\") AS total_stock"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "SUM",
+      "_where": ""
+    }
+  },
+  {
+    "num": 37,
+    "question": "Average buy price per product line",
+    "sql": "SELECT \"productLine\", AVG(\"buyPrice\") AS avg_buy_price\nFROM products p\nGROUP BY \"productLine\";",
+    "decomposition": {
+      "intent": "AVG grouped by \"productLine\" from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "\"productLine\", AVG(\"buyPrice\") AS avg_buy_price"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "\"productLine\"",
+      "_agg": "AVG",
+      "_where": ""
+    }
+  },
+  {
+    "num": 38,
+    "question": "Orders per customer",
+    "sql": "SELECT c.*, o.*\nFROM customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\"\nGROUP BY \"customerNumber\";",
+    "decomposition": {
+      "intent": "Retrieve joined data from customers + orders",
+      "tables": [
+        "customers",
+        "orders"
+      ],
+      "columns": [
+        "c.*, o.*"
+      ],
+      "filters": [],
+      "joins": [
+        "customers c JOIN orders o ON c.\"customerNumber\" = o.\"customerNumber\""
+      ],
+      "group_by": "\"customerNumber\"",
+      "_agg": "",
+      "_where": ""
+    }
+  },
+  {
+    "num": 39,
+    "question": "Max MSRP per product line",
+    "sql": "SELECT \"productLine\", MAX(\"MSRP\") AS max_msrp\nFROM products p\nGROUP BY \"productLine\";",
+    "decomposition": {
+      "intent": "MAX grouped by \"productLine\" from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "\"productLine\", MAX(\"MSRP\") AS max_msrp"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "\"productLine\"",
+      "_agg": "MAX",
+      "_where": ""
+    }
+  },
+  {
+    "num": 40,
+    "question": "Min buy price per vendor",
+    "sql": "SELECT \"productVendor\", MIN(\"buyPrice\") AS min_buy_price\nFROM customers c\nGROUP BY \"productVendor\";",
+    "decomposition": {
+      "intent": "MIN grouped by \"productVendor\" from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "\"productVendor\", MIN(\"buyPrice\") AS min_buy_price"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "\"productVendor\"",
+      "_agg": "MIN",
+      "_where": ""
+    }
+  },
+  {
+    "num": 41,
+    "question": "Total number of customers",
+    "sql": "SELECT COUNT(\"customerNumber\") AS total_customers\nFROM customers c;",
+    "decomposition": {
+      "intent": "Get single COUNT value from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "COUNT(\"customerNumber\") AS total_customers"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 42,
+    "question": "Total number of products",
+    "sql": "SELECT COUNT(\"productCode\") AS total_products\nFROM products p;",
+    "decomposition": {
+      "intent": "Get single COUNT value from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "COUNT(\"productCode\") AS total_products"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 43,
+    "question": "Total revenue from payments",
+    "sql": "SELECT SUM(amount) AS total_revenue\nFROM payments pay;",
+    "decomposition": {
+      "intent": "Get single SUM value from payments",
+      "tables": [
+        "payments"
+      ],
+      "columns": [
+        "SUM(amount) AS total_revenue"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "SUM",
+      "_where": ""
+    }
+  },
+  {
+    "num": 44,
+    "question": "Average product price",
+    "sql": "SELECT AVG(\"buyPrice\") AS avg_price\nFROM products p;",
+    "decomposition": {
+      "intent": "Get single AVG value from products",
+      "tables": [
+        "products"
+      ],
+      "columns": [
+        "AVG(\"buyPrice\") AS avg_price"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "AVG",
+      "_where": ""
+    }
+  },
+  {
+    "num": 45,
+    "question": "Max payment amount",
+    "sql": "SELECT MAX(amount) AS max_payment\nFROM payments pay;",
+    "decomposition": {
+      "intent": "Get single MAX value from payments",
+      "tables": [
+        "payments"
+      ],
+      "columns": [
+        "MAX(amount) AS max_payment"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "MAX",
+      "_where": ""
+    }
+  },
+  {
+    "num": 46,
+    "question": "Min payment amount",
+    "sql": "SELECT MIN(amount) AS min_payment\nFROM payments pay;",
+    "decomposition": {
+      "intent": "Get single MIN value from payments",
+      "tables": [
+        "payments"
+      ],
+      "columns": [
+        "MIN(amount) AS min_payment"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "MIN",
+      "_where": ""
+    }
+  },
+  {
+    "num": 47,
+    "question": "Count total orders",
+    "sql": "SELECT COUNT(\"orderNumber\") AS total_orders\nFROM orders o;",
+    "decomposition": {
+      "intent": "Get single COUNT value from orders",
+      "tables": [
+        "orders"
+      ],
+      "columns": [
+        "COUNT(\"orderNumber\") AS total_orders"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  },
+  {
+    "num": 48,
+    "question": "Total quantity in stock",
+    "sql": "SELECT *\nFROM customers c;",
+    "decomposition": {
+      "intent": "Get single SUM value from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "*"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "SUM",
+      "_where": ""
+    }
+  },
+  {
+    "num": 49,
+    "question": "Average MSRP",
+    "sql": "SELECT AVG(\"MSRP\") AS avg_msrp\nFROM customers c;",
+    "decomposition": {
+      "intent": "Get single AVG value from customers",
+      "tables": [
+        "customers"
+      ],
+      "columns": [
+        "AVG(\"MSRP\") AS avg_msrp"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "AVG",
+      "_where": ""
+    }
+  },
+  {
+    "num": 50,
+    "question": "Number of employees",
+    "sql": "SELECT COUNT(\"employeeNumber\") AS total_employees\nFROM employees e;",
+    "decomposition": {
+      "intent": "Get single COUNT value from employees",
+      "tables": [
+        "employees"
+      ],
+      "columns": [
+        "COUNT(\"employeeNumber\") AS total_employees"
+      ],
+      "filters": [],
+      "joins": [],
+      "group_by": "",
+      "_agg": "COUNT",
+      "_where": ""
+    }
+  }
+]

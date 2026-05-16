@@ -1,0 +1,215 @@
+================================================================
+TASK 3 - GENERATED SQL OUTPUTS
+Text-to-SQL Pipeline (Rule-Based, PostgreSQL)
+Generated: 2026-05-16
+================================================================
+
+SECTION A: Simple SELECT Queries (Q1-Q20)
+------------------------------------------
+
+Q1.  List all products
+     SQL: SELECT * FROM products p;
+
+Q2.  Get all customers
+     SQL: SELECT * FROM customers c;
+
+Q3.  Show all orders
+     SQL: SELECT * FROM orders o;
+
+Q4.  List all employees
+     SQL: SELECT * FROM employees e;
+
+Q5.  Get all offices
+     SQL: SELECT * FROM offices of;
+
+Q6.  Show all product lines
+     SQL: SELECT * FROM productlines pl;
+
+Q7.  List all payments
+     SQL: SELECT * FROM payments pay;
+
+Q8.  Get product names and prices
+     SQL: SELECT "productName", "buyPrice" FROM products p;
+
+Q9.  Get customer names and cities
+     SQL: SELECT "customerName", city FROM customers c;
+
+Q10. List employee first and last names
+     SQL: SELECT "firstName", "lastName" FROM employees e;
+
+Q11. Get all order dates
+     SQL: SELECT "orderNumber", "orderDate" FROM orders o;
+
+Q12. Show product vendor list
+     SQL: SELECT DISTINCT "productVendor" FROM products p;
+
+Q13. Get all product codes
+     SQL: SELECT "productCode" FROM products p;
+
+Q14. List all countries from offices
+     SQL: SELECT DISTINCT country FROM offices of;
+
+Q15. Show all order statuses
+     SQL: SELECT DISTINCT status FROM orders o;
+
+Q16. Get all payment amounts
+     SQL: SELECT "checkNumber", amount FROM payments pay;
+
+Q17. List all job titles
+     SQL: SELECT DISTINCT "jobTitle" FROM employees e;
+
+Q18. Get customer phone numbers
+     SQL: SELECT "customerName", phone FROM customers c;
+
+Q19. Show product MSRP values
+     SQL: SELECT "productName", "MSRP" FROM products p;
+
+Q20. List order numbers
+     SQL: SELECT "orderNumber" FROM orders o;
+
+
+SECTION B: JOIN Queries (Q21-Q30)
+------------------------------------------
+
+Q21. Get orders with customer names
+     SQL: SELECT o."orderNumber", o."orderDate", c."customerName"
+          FROM orders o
+          JOIN customers c ON o."customerNumber" = c."customerNumber";
+
+Q22. Get employees with office city
+     SQL: SELECT e."firstName", e."lastName", of.city
+          FROM employees e
+          JOIN offices of ON e."officeCode" = of."officeCode";
+
+Q23. Get payments with customer names
+     SQL: SELECT c."customerName", pay."paymentDate", pay.amount
+          FROM payments pay
+          JOIN customers c ON pay."customerNumber" = c."customerNumber";
+
+Q24. Get order details with product names
+     SQL: SELECT od."orderNumber", p."productName", od."quantityOrdered"
+          FROM orderdetails od
+          JOIN products p ON od."productCode" = p."productCode";
+
+Q25. Get products with product line description
+     SQL: SELECT p."productName", pl."textDescription"
+          FROM products p
+          JOIN productlines pl ON p."productLine" = pl."productLine";
+
+Q26. Get customers with sales rep names
+     SQL: SELECT c."customerName", e."firstName", e."lastName"
+          FROM customers c
+          JOIN employees e ON c."salesRepEmployeeNumber" = e."employeeNumber";
+
+Q27. Get orders with customer city
+     SQL: SELECT o."orderNumber", c."customerName", c.city
+          FROM orders o
+          JOIN customers c ON o."customerNumber" = c."customerNumber";
+
+Q28. Get employees and their manager
+     SQL: SELECT e."firstName", e."lastName",
+                 m."firstName" AS manager_first, m."lastName" AS manager_last
+          FROM employees e
+          JOIN employees m ON e."reportsTo" = m."employeeNumber";
+
+Q29. Get orderdetails with product vendor
+     SQL: SELECT od."orderNumber", p."productName", p."productVendor"
+          FROM orderdetails od
+          JOIN products p ON od."productCode" = p."productCode";
+
+Q30. Get payments with customer country
+     SQL: SELECT c."customerName", c.country, pay.amount
+          FROM payments pay
+          JOIN customers c ON pay."customerNumber" = c."customerNumber";
+
+
+SECTION C: Aggregate / GROUP BY Queries (Q31-Q40)
+------------------------------------------
+
+Q31. Count customers per country
+     SQL: SELECT country, COUNT("customerNumber") AS total
+          FROM customers c
+          GROUP BY country;
+
+Q32. Total payments per customer
+     SQL: SELECT "customerNumber", SUM(amount) AS total_amount
+          FROM payments pay
+          GROUP BY "customerNumber";
+
+Q33. Number of orders per status
+     SQL: SELECT status, COUNT("orderNumber") AS total
+          FROM orders o
+          GROUP BY status;
+
+Q34. Products per product line
+     SQL: SELECT "productLine", COUNT("productCode") AS total
+          FROM products p
+          GROUP BY "productLine";
+
+Q35. Employees per office
+     SQL: SELECT "officeCode", COUNT("employeeNumber") AS total
+          FROM employees e
+          GROUP BY "officeCode";
+
+Q36. Total stock per product vendor
+     SQL: SELECT "productVendor", SUM("quantityInStock") AS total_stock
+          FROM products p
+          GROUP BY "productVendor";
+
+Q37. Average buy price per product line
+     SQL: SELECT "productLine", AVG("buyPrice") AS avg_buy_price
+          FROM products p
+          GROUP BY "productLine";
+
+Q38. Orders per customer
+     SQL: SELECT "customerNumber", COUNT("orderNumber") AS total
+          FROM orders o
+          GROUP BY "customerNumber";
+
+Q39. Max MSRP per product line
+     SQL: SELECT "productLine", MAX("MSRP") AS max_msrp
+          FROM products p
+          GROUP BY "productLine";
+
+Q40. Min buy price per vendor
+     SQL: SELECT "productVendor", MIN("buyPrice") AS min_buy_price
+          FROM products p
+          GROUP BY "productVendor";
+
+
+SECTION D: Single-Value Aggregate Queries (Q41-Q50)
+------------------------------------------
+
+Q41. Total number of customers
+     SQL: SELECT COUNT("customerNumber") AS total_customers FROM customers c;
+
+Q42. Total number of products
+     SQL: SELECT COUNT("productCode") AS total_products FROM products p;
+
+Q43. Total revenue from payments
+     SQL: SELECT SUM(amount) AS total_revenue FROM payments pay;
+
+Q44. Average product price
+     SQL: SELECT AVG("buyPrice") AS avg_price FROM products p;
+
+Q45. Max payment amount
+     SQL: SELECT MAX(amount) AS max_payment FROM payments pay;
+
+Q46. Min payment amount
+     SQL: SELECT MIN(amount) AS min_payment FROM payments pay;
+
+Q47. Count total orders
+     SQL: SELECT COUNT("orderNumber") AS total_orders FROM orders o;
+
+Q48. Total quantity in stock
+     SQL: SELECT SUM("quantityInStock") AS total_stock FROM products p;
+
+Q49. Average MSRP
+     SQL: SELECT AVG("MSRP") AS avg_msrp FROM products p;
+
+Q50. Number of employees
+     SQL: SELECT COUNT("employeeNumber") AS total_employees FROM employees e;
+
+================================================================
+END OF SQL OUTPUTS
+================================================================

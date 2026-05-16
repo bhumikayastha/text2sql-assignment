@@ -19,7 +19,7 @@ DB_CONFIG = {
     "port":     5432,
     "dbname":   "classicmodels",   # Your database name
     "user":     "postgres",        # Your PostgreSQL username
-    "password": "postgres",   # Your PostgreSQL password
+    "password": "your_password",   # Your PostgreSQL password
 }
 
 
