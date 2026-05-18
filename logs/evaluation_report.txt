@@ -1,286 +1,275 @@
 ======================================================================
   TEXT-TO-SQL SYSTEM - EVALUATION REPORT
-  Task 3: Agentic Text-to-SQL Pipeline
-  Generated: 2026-05-16
+  Generated: 2026-05-18 18:46:49
 ======================================================================
 
-PIPELINE ARCHITECTURE
-----------------------------------------------------------------------
-Natural Language Question
-  |
-  v
-[sql_generator.py] — Rule-Based Decomposition Engine
-  Step 1: detect_tables()   — keyword scan to identify tables needed
-  Step 2: detect_agg()      — detect COUNT/SUM/AVG/MAX/MIN
-  Step 3: detect_group_by() — detect GROUP BY from "per X" patterns
-  Step 4: detect_filter()   — detect WHERE conditions (country, status)
-  Step 5: build_columns()   — construct SELECT columns with quoted names
-  Step 6: build_sql()       — assemble final SQL with JOINs
-  |
-  v
-[validator.py] — SQL Safety Gate
-  - Blocks: DELETE, DROP, UPDATE, INSERT, TRUNCATE, ALTER
-  - Blocks: Multiple statements, SQL comments
-  - Only passes SELECT queries
-  |
-  v
-[executor.py] — Query Runner with Retry Logic
-  Attempt 1: Run SQL against PostgreSQL
-  If SUCCESS → return results
-  If FAILURE → pass error to fix_sql()
-  |
-  v
-[sql_generator.fix_sql()] — Auto-Correction Engine
-  - Fixes wrong table names (regex match on schema)
-  - Fixes column case issues (adds double quotes)
-  - Fixes ambiguous columns (adds table alias prefix)
-  - Regenerates from scratch on syntax errors
-  |
-  v
-[executor.py] — Retry Attempt
-  Attempt 2: Run fixed SQL
-  Log result (success or final failure)
-  |
-  v
-[main.py] — Benchmark Runner
-  Collect all results → Save logs → Print summary
+PIPELINE ARCHITECTURE:
+  Natural Language Question
+    -> sql_generator.py  (LLM prompt chaining)
+    -> validator.py      (block unsafe SQL)
+    -> executor.py       (run query, retry once)
+    -> database.py       (PostgreSQL connection)
 
-----------------------------------------------------------------------
-DESIGN DECISIONS
-----------------------------------------------------------------------
-
-1. RULE-BASED APPROACH (no LLM/API required)
-   Chose rule-based over LLM-based because:
-   - Works offline, no API key needed
-   - Deterministic and reproducible results
-   - Fast execution (no network latency)
-   - Easy to debug and extend
-   - Suitable for a fixed, well-known schema (classicmodels)
-
-2. DOUBLE-QUOTED COLUMN NAMES
-   PostgreSQL lowercases unquoted identifiers by default.
-   Since classicmodels uses camelCase (customerNumber, productLine),
-   all column names are wrapped in double quotes to preserve case.
-   Example: COUNT(customerNumber) → COUNT("customerNumber")
-
-3. TWO-STEP DECOMPOSITION
-   Mirrors the Task 2 structured thinking approach:
-   Question → {intent, tables, columns, filters, joins} → SQL
-   This makes the pipeline explainable and debuggable.
-
-4. SAFETY FIRST
-   validator.py runs BEFORE every SQL execution.
-   Even retry attempts are validated before running.
-   Blocked queries never touch the database.
-
-5. MAXIMUM 1 RETRY
-   Prevents infinite loops.
-   Error message is used to diagnose and fix the specific issue.
-   If retry also fails, result is logged as final failure.
-
-6. STRUCTURED JSON OUTPUT
-   Every query result is a consistent dict with:
-   question, sql, result, status, retry_needed, retry_success,
-   error, row_count, timestamp
-   Makes evaluation, logging, and reporting easy.
-
-----------------------------------------------------------------------
 SUMMARY METRICS
 ----------------------------------------------------------------------
-Total questions evaluated:    50
-Successful (no retry):        42
-Successful (after retry):      3
-Total successful:             45
-Failed (both attempts):        3
-Blocked (unsafe SQL):          2
-SQL Execution Success Rate:   90.0%
-Retry Fix Rate:               75.0% (3 of 4 retried were fixed)
-Queries needing retry:         4
-Average rows returned:        18.6
+  Total questions evaluated:   50
+  Successful executions:       38
+  Failed executions:           12
+  Blocked (unsafe SQL):        0
+  Generation failures:         0
+  Retries attempted:           12
+  Fixed after retry:           0
+  SQL Execution Success Rate:  76.0%
+  Retry Fix Rate:              0.0%
 
+PER-QUESTION RESULTS
 ----------------------------------------------------------------------
-EVALUATION TABLE - ALL 50 QUESTIONS
-----------------------------------------------------------------------
-#    Question                              SQL Generated  Executed  Rows   Retry  Status
-----------------------------------------------------------------------
-1    List all products                     Yes            Yes       110    No     SUCCESS
-2    Get all customers                     Yes            Yes       122    No     SUCCESS
-3    Show all orders                       Yes            Yes       326    No     SUCCESS
-4    List all employees                    Yes            Yes       23     No     SUCCESS
-5    Get all offices                       Yes            Yes       7      No     SUCCESS
-6    Show all product lines                Yes            Yes       7      No     SUCCESS
-7    List all payments                     Yes            Yes       273    No     SUCCESS
-8    Get product names and prices          Yes            Yes       110    No     SUCCESS
-9    Get customer names and cities         Yes            Yes       122    No     SUCCESS
-10   List employee first and last names    Yes            Yes       23     No     SUCCESS
-11   Get all order dates                   Yes            Yes       326    No     SUCCESS
-12   Show product vendor list              Yes            Yes       13     No     SUCCESS
-13   Get all product codes                 Yes            Yes       110    No     SUCCESS
-14   List all countries from offices       Yes            Yes       5      No     SUCCESS
-15   Show all order statuses               Yes            Yes       6      No     SUCCESS
-16   Get all payment amounts               Yes            Yes       273    No     SUCCESS
-17   List all job titles                   Yes            Yes       7      No     SUCCESS
-18   Get customer phone numbers            Yes            Yes       122    No     SUCCESS
-19   Show product MSRP values              Yes            Yes       110    No     SUCCESS
-20   List order numbers                    Yes            Yes       326    No     SUCCESS
-21   Get orders with customer names        Yes            Yes       326    No     SUCCESS
-22   Get employees with office city        Yes            Yes       23     No     SUCCESS
-23   Get payments with customer names      Yes            Yes       273    No     SUCCESS
-24   Get order details with product names  Yes            Yes       2996   No     SUCCESS
-25   Get products with product line desc   Yes            Yes       110    No     SUCCESS
-26   Get customers with sales rep names    Yes            Yes       100    No     SUCCESS
-27   Get orders with customer city         Yes            Yes       326    No     SUCCESS
-28   Get employees and their manager       Yes            Yes       22     No     SUCCESS
-29   Get orderdetails with product vendor  Yes            Yes       2996   No     SUCCESS
-30   Get payments with customer country    Yes            Yes       273    No     SUCCESS
-31   Count customers per country           Yes            Yes       28     No     SUCCESS
-32   Total payments per customer           Yes            Yes       98     No     SUCCESS
-33   Number of orders per status           Yes            Yes       6      No     SUCCESS
-34   Products per product line             Yes            Yes       7      No     SUCCESS
-35   Employees per office                  Yes            Yes       7      No     SUCCESS
-36   Total stock per product vendor        Yes            Yes       13     No     SUCCESS
-37   Average buy price per product line    Yes            Yes       7      No     SUCCESS
-38   Orders per customer                   Yes            Yes       98     No     SUCCESS
-39   Max MSRP per product line             Yes            Yes       7      No     SUCCESS
-40   Min buy price per vendor              Yes            Yes       13     No     SUCCESS
-41   Total number of customers             Yes            Yes       1      No     SUCCESS
-42   Total number of products              Yes            Yes       1      No     SUCCESS
-43   Total revenue from payments           Yes            Yes       1      No     SUCCESS
-44   Average product price                 Yes            Yes       1      No     SUCCESS
-45   Max payment amount                    Yes            Yes       1      No     SUCCESS
-46   Min payment amount                    Yes            Yes       1      No     SUCCESS
-47   Count total orders                    Yes            Yes       1      No     SUCCESS
-48   Total quantity in stock               Yes            Yes       1      No     SUCCESS
-49   Average MSRP                          Yes            Yes       1      No     SUCCESS
-50   Number of employees                   Yes            Yes       1      No     SUCCESS
+Q1: List all products
+  Status: success
+  SQL: SELECT * FROM "products";
+  Rows: 110
 
-----------------------------------------------------------------------
-EXAMPLE SUCCESSFUL QUERY CASES
-----------------------------------------------------------------------
+Q2: Get all customers
+  Status: success
+  SQL: SELECT * FROM "customers";
+  Rows: 122
 
-EXAMPLE 1 - Simple SELECT
-  Question:  "Total number of customers"
-  Intent:    Get single COUNT value from customers table
-  Tables:    customers
-  Columns:   COUNT("customerNumber")
-  Filters:   None
-  Joins:     None
-  SQL:       SELECT COUNT("customerNumber") AS total_customers FROM customers c;
-  Result:    [{"total_customers": 122}]
-  Status:    SUCCESS | Rows: 1 | Retry: No
+Q3: Show all orders
+  Status: success
+  SQL: SELECT * FROM "orders";
+  Rows: 326
 
-EXAMPLE 2 - Filtered Query
-  Question:  "How many customers are from Germany"
-  Intent:    Count customers with country filter
-  Tables:    customers
-  Columns:   COUNT("customerNumber")
-  Filters:   country = 'Germany'
-  Joins:     None
-  SQL:       SELECT COUNT("customerNumber") AS total_customers
-             FROM customers c
-             WHERE country = 'Germany';
-  Result:    [{"total_customers": 13}]
-  Status:    SUCCESS | Rows: 1 | Retry: No
+Q4: List all employees
+  Status: success
+  SQL: SELECT * FROM "employees";
+  Rows: 23
 
-EXAMPLE 3 - JOIN Query
-  Question:  "Get orders with customer names"
-  Intent:    Retrieve joined data from orders + customers
-  Tables:    orders, customers
-  Columns:   o."orderNumber", o."orderDate", c."customerName"
-  Filters:   None
-  Joins:     orders JOIN customers ON o."customerNumber" = c."customerNumber"
-  SQL:       SELECT o."orderNumber", o."orderDate", c."customerName"
-             FROM orders o
-             JOIN customers c ON o."customerNumber" = c."customerNumber";
-  Result:    326 rows returned
-  Status:    SUCCESS | Rows: 326 | Retry: No
+Q5: Get all offices
+  Status: success
+  SQL: SELECT * FROM "offices";
+  Rows: 7
 
-EXAMPLE 4 - Aggregate with GROUP BY
-  Question:  "Average buy price per product line"
-  Intent:    AVG grouped by productLine from products
-  Tables:    products
-  Columns:   "productLine", AVG("buyPrice")
-  Filters:   None
-  Joins:     None
-  SQL:       SELECT "productLine", AVG("buyPrice") AS avg_buy_price
-             FROM products p
-             GROUP BY "productLine";
-  Result:    7 rows (one per product line)
-  Status:    SUCCESS | Rows: 7 | Retry: No
+Q6: Show all product lines
+  Status: success
+  SQL: SELECT * FROM "productlines";
+  Rows: 7
 
-EXAMPLE 5 - Self-JOIN (Employee + Manager)
-  Question:  "Get employees and their manager"
-  Intent:    Self-join on employees table
-  Tables:    employees (aliased as e and m)
-  Columns:   e."firstName", e."lastName", m."firstName", m."lastName"
-  Filters:   None
-  Joins:     employees e JOIN employees m ON e."reportsTo" = m."employeeNumber"
-  SQL:       SELECT e."firstName", e."lastName",
-                    m."firstName" AS manager_first, m."lastName" AS manager_last
-             FROM employees e
-             JOIN employees m ON e."reportsTo" = m."employeeNumber";
-  Result:    22 rows
-  Status:    SUCCESS | Rows: 22 | Retry: No
+Q7: List all payments
+  Status: success
+  SQL: SELECT * FROM "payments";
+  Rows: 273
 
-----------------------------------------------------------------------
-EXAMPLE FAILED QUERY CASES AND RETRY HANDLING
-----------------------------------------------------------------------
+Q8: Get product names and prices
+  Status: success
+  SQL: SELECT "productName", "buyPrice", "MSRP" FROM "products";
+  Rows: 110
 
-FAILED CASE 1 - Column Case Sensitivity (FIXED after retry)
-  Question:   "What is the number of customers"
-  First SQL:  SELECT COUNT(customerNumber) AS total_customers FROM customers c;
-  Error:      column "customernumber" does not exist
-              HINT: Perhaps you meant to reference the column "c.customerNumber"
-  Diagnosis:  PostgreSQL lowercased unquoted camelCase column name
-  Fix Applied: Added double quotes around column name
-  Fixed SQL:  SELECT COUNT("customerNumber") AS total_customers FROM customers c;
-  Result:     [{"total_customers": 122}]
-  Status:     SUCCESS after retry | Retry needed: Yes | Fixed: Yes
+Q9: Get customer names and cities
+  Status: success
+  SQL: SELECT "customerName", "city" FROM "customers";
+  Rows: 122
 
-FAILED CASE 2 - Unsafe SQL Blocked by Validator
-  Question:  "DELETE FROM customers"
-  SQL:        DELETE FROM customers
-  Validator:  BLOCKED — keyword DELETE detected
-  Error:      Blocked keyword detected: DELETE. Only SELECT is allowed.
-  Retry:      No (blocked before reaching database)
-  Status:     BLOCKED
+Q10: List employee first and last names
+  Status: success
+  SQL: SELECT "firstName", "lastName" FROM "employees";
+  Rows: 23
 
-FAILED CASE 3 - Unsafe SQL DROP Blocked
-  Question:  "DROP TABLE orders"
-  SQL:        DROP TABLE orders
-  Validator:  BLOCKED — keyword DROP detected
-  Error:      Blocked keyword detected: DROP. Only SELECT is allowed.
-  Retry:      No (blocked before reaching database)
-  Status:     BLOCKED
+Q11: Get all order dates
+  Status: success
+  SQL: SELECT "orderDate" FROM "orders";
+  Rows: 326
 
-----------------------------------------------------------------------
-RETRY / SELF-CORRECTION MECHANISM - HOW IT WORKS
-----------------------------------------------------------------------
+Q12: Show product vendor list
+  Status: success
+  SQL: SELECT "productVendor" FROM "products";
+  Rows: 110
 
-Step 1: First SQL attempt is executed
-Step 2: If execution fails, error message is captured
-Step 3: fix_sql() analyzes the error:
-  - "relation X does not exist"  → corrects table name using schema lookup
-  - "column X does not exist"    → adds double quotes for case preservation
-  - "column X is ambiguous"      → adds table alias prefix (e.g. c."column")
-  - "syntax error"               → regenerates SQL completely from scratch
-Step 4: Fixed SQL is validated again (safety check)
-Step 5: Fixed SQL is executed (retry attempt)
-Step 6: Result logged regardless of outcome
-Step 7: Maximum 1 retry — no infinite loops
+Q13: Get all product codes
+  Status: success
+  SQL: SELECT "products"."productCode" FROM "products";
+  Rows: 110
 
-----------------------------------------------------------------------
-SUGGESTED EVALUATION METRICS RESULTS
-----------------------------------------------------------------------
-SQL Execution Success Rate:     90.0%
-Query Result Accuracy:          90.0% (verified against expected outputs)
-Correct Table Selection:        96.0% (48/50 questions)
-Correct Column Selection:       92.0% (46/50 questions)
-Retry / Self-Correction Rate:   75.0% (3 of 4 retried were fixed)
-Number of Failed Queries:       3 (could not be recovered)
-Number of Blocked Queries:      2 (unsafe SQL correctly blocked)
-Query Generation Latency:       < 1ms per query (rule-based, no API)
+Q14: List all countries from offices
+  Status: success
+  SQL: SELECT * FROM "offices";
+  Rows: 7
 
-======================================================================
-END OF EVALUATION REPORT
-======================================================================
+Q15: Show all order statuses
+  Status: success
+  SQL: SELECT "orders"."status" FROM "orders";
+  Rows: 326
+
+Q16: Get all payment amounts
+  Status: success
+  SQL: SELECT "amount" FROM "payments";
+  Rows: 273
+
+Q17: List all job titles
+  Status: success
+  SQL: SELECT "jobTitle" FROM "employees";
+  Rows: 23
+
+Q18: Get customer phone numbers
+  Status: success
+  SQL: SELECT "phone" FROM "customers";
+  Rows: 122
+
+Q19: Show product MSRP values
+  Status: success
+  SQL: SELECT "MSRP" FROM "products";
+  Rows: 110
+
+Q20: List order numbers
+  Status: success
+  SQL: SELECT "orderNumber" FROM "orders";
+  Rows: 326
+
+Q21: Get orders with customer names
+  Status: success
+  SQL: SELECT "orders"."orderNumber", "orders"."orderDate", "customers"."customerName" FROM "orders" JOIN "customers" ON "orders"."customerNumber" = "customers"."customerNumber";
+  Rows: 326
+
+Q22: Get employees with office city
+  Status: success
+  SQL: SELECT "employees"."firstName", "employees"."lastName", "offices"."city" FROM "employees" JOIN "offices" ON "employees"."officeCode" = "offices"."officeCode";
+  Rows: 23
+
+Q23: Get payments with customer names
+  Status: success
+  SQL: SELECT "payments"."paymentDate", "payments"."amount", "customers"."customerName" FROM "payments" JOIN "customers" ON "payments"."customerNumber" = "customers"."customerNumber";
+  Rows: 273
+
+Q24: Get order details with product names
+  Status: success
+  SQL: SELECT "orderdetails"."orderNumber", "products"."productName", "orderdetails"."quantityOrdered" FROM "orderdetails" JOIN "products" ON "orderdetails"."productCode" = "products"."productCode";
+  Rows: 2996
+
+Q25: Get products with product line description
+  Status: success
+  SQL: SELECT "products"."productName", "productlines"."textDescription" FROM "products" JOIN "productlines" ON "products"."productLine" = "productlines"."productLine";
+  Rows: 110
+
+Q26: Get customers with sales rep names
+  Status: success
+  SQL: SELECT "customers"."customerName", "employees"."firstName", "employees"."lastName" FROM "customers" JOIN "employees" ON "customers"."salesRepEmployeeNumber" = "employees"."employeeNumber";
+  Rows: 100
+
+Q27: Get orders with customer city
+  Status: success
+  SQL: SELECT "orders"."orderNumber", "customers"."city" FROM "orders" JOIN "customers" ON "orders"."customerNumber" = "customers"."customerNumber";
+  Rows: 326
+
+Q28: Get employees and their manager
+  Status: success
+  SQL: SELECT e."firstName", e."lastName", m."firstName" AS "managerFirstName", m."lastName" AS "managerLastName" FROM "employees" e JOIN "employees" m ON e."reportsTo" = m."employeeNumber";
+  Rows: 22
+
+Q29: Get orderdetails with product vendor
+  Status: success
+  SQL: SELECT "orderdetails"."orderNumber", "products"."productName", "products"."productVendor" FROM "orderdetails" JOIN "products" ON "orderdetails"."productCode" = "products"."productCode";
+  Rows: 2996
+
+Q30: Get payments with customer country
+  Status: success
+  SQL: SELECT "payments"."paymentDate", "payments"."amount", "customers"."country" FROM "payments" JOIN "customers" ON "payments"."customerNumber" = "customers"."customerNumber";
+  Rows: 273
+
+Q31: Count customers per country
+  Status: success
+  SQL: SELECT COUNT(*) AS total_count FROM "customers" GROUP BY "customers"."country";
+  Rows: 28
+
+Q32: Total payments per customer
+  Status: success
+  SQL: SELECT SUM(amount) AS total_payments FROM "payments" JOIN "customers" ON "payments"."customerNumber" = "customers"."customerNumber" GROUP BY "customers"."customerName";
+  Rows: 98
+
+Q33: Number of orders per status
+  Status: success
+  SQL: SELECT COUNT(*) AS total_count FROM "orders" GROUP BY "orders"."status";
+  Rows: 6
+
+Q34: Products per product line
+  Status: failed
+  SQL: SELECT * FROM "products" JOIN "productlines" ON "products"."productLine" = "productlines"."productLine" GROUP BY "products"."productLine";
+  Rows: 0
+
+Q35: Employees per office
+  Status: failed
+  SQL: SELECT * FROM "employees" JOIN "offices" ON "employees"."officeCode" = "offices"."officeCode" GROUP BY "employees"."officeCode";
+  Rows: 0
+
+Q36: Total stock per product vendor
+  Status: success
+  SQL: SELECT "products"."productVendor" FROM "products";
+  Rows: 110
+
+Q37: Average buy price per product line
+  Status: failed
+  SQL: SELECT AVG(buyPrice) AS average_buy_price FROM "productlines" GROUP BY "products"."productLine";
+  Rows: 0
+
+Q38: Orders per customer
+  Status: failed
+  SQL: SELECT * FROM "orders" JOIN "customers" ON "orders"."customerNumber" = "customers"."customerNumber" GROUP BY "customers"."customerName";
+  Rows: 0
+
+Q39: Max MSRP per product line
+  Status: failed
+  SQL: SELECT MAX(MSRP) AS max_msrp FROM "productlines" GROUP BY "products"."productLine";
+  Rows: 0
+
+Q40: Min buy price per vendor
+  Status: failed
+  SQL: SELECT MIN(buyPrice) AS min_buy_price FROM "products";
+  Rows: 0
+
+Q41: Total number of customers
+  Status: failed
+  SQL: SELECT "COUNT(*) AS total_customers" FROM "customers";
+  Rows: 0
+
+Q42: Total number of products
+  Status: failed
+  SQL: SELECT "COUNT(*) AS total_products" FROM "products";
+  Rows: 0
+
+Q43: Total revenue from payments
+  Status: success
+  SQL: SELECT SUM(amount) AS total_payments FROM "payments";
+  Rows: 1
+
+Q44: Average product price
+  Status: failed
+  SQL: SELECT AVG(buyPrice) AS average_buy_price FROM "products";
+  Rows: 0
+
+Q45: Max payment amount
+  Status: success
+  SQL: SELECT MAX(amount) AS max_payment_amount FROM "payments";
+  Rows: 1
+
+Q46: Min payment amount
+  Status: success
+  SQL: SELECT MIN(amount) AS min_payment_amount FROM "payments";
+  Rows: 1
+
+Q47: Count total orders
+  Status: failed
+  SQL: SELECT "COUNT(*) AS total_orders" FROM "orders";
+  Rows: 0
+
+Q48: Total quantity in stock
+  Status: failed
+  SQL: SELECT SUM(quantityInStock) AS total_quantity_in_stock FROM "products";
+  Rows: 0
+
+Q49: Average MSRP
+  Status: failed
+  SQL: SELECT AVG(MSRP) AS average_msrp FROM "products";
+  Rows: 0
+
+Q50: Number of employees
+  Status: success
+  SQL: SELECT COUNT(*) AS total_count FROM "employees";
+  Rows: 1

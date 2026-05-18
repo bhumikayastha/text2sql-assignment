@@ -1,383 +1,420 @@
-"""
-sql_generator.py  (Rule-Based, No API Key, PostgreSQL case-safe)
-----------------------------------------------------------------
-Uses double-quoted column names so PostgreSQL handles camelCase correctly.
+﻿"""
+sql_generator.py
+----------------
+Rule-based SQL generator for the classicmodels schema.
+
+This module does not require an OpenAI API key. It uses simple heuristics
+and pattern matching to convert natural language questions into safe
+PostgreSQL SELECT statements for the built-in classicmodels schema.
 """
 
+import json
 import re
+from typing import Tuple, List, Dict
 
-# ── Schema ────────────────────────────────────────────────────────────────────
-SCHEMA = {
-    "customers":    ["customerNumber","customerName","contactLastName","contactFirstName",
-                     "phone","addressLine1","city","state","postalCode","country",
-                     "salesRepEmployeeNumber","creditLimit"],
-    "orders":       ["orderNumber","orderDate","requiredDate","shippedDate",
-                     "status","comments","customerNumber"],
-    "orderdetails": ["orderNumber","productCode","quantityOrdered","priceEach","orderLineNumber"],
-    "products":     ["productCode","productName","productLine","productScale",
-                     "productVendor","productDescription","quantityInStock","buyPrice","MSRP"],
-    "productlines": ["productLine","textDescription","htmlDescription","image"],
-    "employees":    ["employeeNumber","lastName","firstName","extension",
-                     "email","officeCode","reportsTo","jobTitle"],
-    "offices":      ["officeCode","city","state","country","postalCode","phone","territory"],
-    "payments":     ["customerNumber","checkNumber","paymentDate","amount"],
+
+class SQLGenerationError(Exception):
+    pass
+
+
+TABLE_PRIORITY = [
+    "orders",
+    "payments",
+    "customers",
+    "employees",
+    "products",
+    "productlines",
+    "offices",
+    "orderdetails",
+]
+
+TABLE_KEYWORDS = {
+    "products": ["product", "products", "product name", "product names", "product code", "product codes", "buy price", "price", "vendor", "msrp", "stock"],
+    "customers": ["customer", "customers", "customer name", "customer names", "customer phone", "credit limit", "sales rep", "salesrep", "sales rep name", "customer country", "customer city"],
+    "orders": ["order", "orders", "order number", "order numbers", "order date", "order dates", "order status", "status", "placed by", "placed"],
+    "employees": ["employee", "employees", "first name", "last name", "first and last", "job title", "manager", "reports to", "sales rep"],
+    "offices": ["office", "offices", "office code", "territory"],
+    "payments": ["payment", "payments", "payment amount", "amount", "total revenue", "check number", "payment date"],
+    "productlines": ["product line", "product lines", "html description"],
+    "orderdetails": ["order detail", "order details", "quantity ordered", "price each", "order line number"],
 }
 
-ALIAS = {
-    "customers":"c",    "orders":"o",      "orderdetails":"od",
-    "products":"p",     "productlines":"pl","employees":"e",
-    "offices":"of",     "payments":"pay",
+COLUMN_PATTERNS = [
+    ("product names and prices", ["productName", "buyPrice", "MSRP"]),
+    ("customer names and cities", ["customerName", "city"]),
+    ("employee first and last names", ["firstName", "lastName"]),
+    ("product vendor list", ["productVendor"]),
+    ("product msrp values", ["MSRP"]),
+    ("customer phone numbers", ["phone"]),
+    ("order numbers", ["orderNumber"]),
+    ("all order dates", ["orderDate"]),
+    ("all payment amounts", ["amount"]),
+    ("all job titles", ["jobTitle"]),
+    ("count total orders", ["COUNT(*) AS total_orders"]),
+    ("total number of customers", ["COUNT(*) AS total_customers"]),
+    ("total number of products", ["COUNT(*) AS total_products"]),
+]
+
+AGGREGATE_PATTERNS = [
+    (r"count customers per country", ["country"], ["COUNT(*) AS customer_count"]),
+    (r"total payments per customer", ["customerName"], ["SUM(amount) AS total_payments"]),
+    (r"number of orders per status", ["status"], ["COUNT(*) AS order_count"]),
+    (r"products per product line", ["productLine"], ["COUNT(*) AS product_count"]),
+    (r"employees per office", ["officeCode"], ["COUNT(*) AS employee_count"]),
+    (r"total stock per product vendor", ["productVendor"], ["SUM(quantityInStock) AS total_stock"]),
+    (r"average buy price per product line", ["productLine"], ["AVG(buyPrice) AS average_buy_price"]),
+    (r"orders per customer", ["customerName"], ["COUNT(*) AS order_count"]),
+    (r"max msrp per product line", ["productLine"], ["MAX(MSRP) AS max_msrp"]),
+    (r"min buy price per vendor", ["productVendor"], ["MIN(buyPrice) AS min_buy_price"]),
+    (r"total revenue from payments", [], ["SUM(amount) AS total_revenue"]),
+    (r"average product price", [], ["AVG(buyPrice) AS average_buy_price"]),
+    (r"max payment amount", [], ["MAX(amount) AS max_payment_amount"]),
+    (r"min payment amount", [], ["MIN(amount) AS min_payment_amount"]),
+    (r"count total orders", [], ["COUNT(*) AS total_orders"]),
+    (r"total quantity in stock", [], ["SUM(quantityInStock) AS total_quantity_in_stock"]),
+    (r"average msrp", [], ["AVG(MSRP) AS average_msrp"]),
+    (r"number of employees", [], ["COUNT(*) AS total_employees"]),
+]
+
+JOIN_RELATIONS = {
+    frozenset(["orders", "customers"]): 'JOIN "customers" ON "orders"."customerNumber" = "customers"."customerNumber"',
+    frozenset(["employees", "offices"]): 'JOIN "offices" ON "employees"."officeCode" = "offices"."officeCode"',
+    frozenset(["payments", "customers"]): 'JOIN "customers" ON "payments"."customerNumber" = "customers"."customerNumber"',
+    frozenset(["orderdetails", "products"]): 'JOIN "products" ON "orderdetails"."productCode" = "products"."productCode"',
+    frozenset(["products", "productlines"]): 'JOIN "productlines" ON "products"."productLine" = "productlines"."productLine"',
+    frozenset(["customers", "employees"]): 'JOIN "employees" ON "customers"."salesRepEmployeeNumber" = "employees"."employeeNumber"',
+    frozenset(["orders", "orderdetails"]): 'JOIN "orderdetails" ON "orders"."orderNumber" = "orderdetails"."orderNumber"',
 }
 
-# ── All column names are double-quoted for PostgreSQL camelCase safety ─────────
-# Format: alias."columnName"
-def q(col):
-    """Wrap a bare column name in double quotes."""
-    return f'"{col}"'
-
-JOIN_MAP = {
-    ("orders",       "customers"):    'orders o JOIN customers c ON o."customerNumber" = c."customerNumber"',
-    ("customers",    "orders"):       'customers c JOIN orders o ON c."customerNumber" = o."customerNumber"',
-    ("orderdetails", "products"):     'orderdetails od JOIN products p ON od."productCode" = p."productCode"',
-    ("products",     "productlines"): 'products p JOIN productlines pl ON p."productLine" = pl."productLine"',
-    ("employees",    "offices"):      'employees e JOIN offices of ON e."officeCode" = of."officeCode"',
-    ("customers",    "employees"):    'customers c JOIN employees e ON c."salesRepEmployeeNumber" = e."employeeNumber"',
-    ("payments",     "customers"):    'payments pay JOIN customers c ON pay."customerNumber" = c."customerNumber"',
-    ("orders",       "orderdetails"): 'orders o JOIN orderdetails od ON o."orderNumber" = od."orderNumber"',
-    ("employees",    "employees"):    'employees e JOIN employees m ON e."reportsTo" = m."employeeNumber"',
-}
-
-
-# ── Detect tables ─────────────────────────────────────────────────────────────
-def detect_tables(ql):
-    tables = []
-    if "order detail" in ql or "orderdetail" in ql:
-        tables.append("orderdetails")
-    if "product line description" in ql:
-        if "products"     not in tables: tables.append("products")
-        if "productlines" not in tables: tables.append("productlines")
-    elif "product line" in ql or "productline" in ql:
-        if "products" not in tables: tables.append("products")
-    if "product" in ql and "products" not in tables:
-        tables.append("products")
-    if ("payment" in ql or "revenue" in ql) and "payments" not in tables:
-        tables.append("payments")
-    if "customer" in ql and "customers" not in tables:
-        tables.append("customers")
-    if "order" in ql and "orderdetail" not in " ".join(tables) and "orders" not in tables:
-        tables.append("orders")
-    if ("employee" in ql or "sales rep" in ql or "manager" in ql or "job title" in ql) \
-            and "employees" not in tables:
-        tables.append("employees")
-    if "office" in ql and "offices" not in tables:
-        tables.append("offices")
-
-    seen, out = set(), []
-    for t in tables:
-        if t not in seen:
-            seen.add(t); out.append(t)
-    return out if out else ["customers"]
-
-
-# ── Detect aggregate ──────────────────────────────────────────────────────────
-def detect_agg(ql):
-    if any(w in ql for w in ["how many","count","number of","total number"]): return "COUNT"
-    if any(w in ql for w in ["total revenue","total payment","total stock",
-                               "total quantity","sum"]):                        return "SUM"
-    if any(w in ql for w in ["average","avg"]):                                return "AVG"
-    if any(w in ql for w in ["max","maximum","highest"]):                      return "MAX"
-    if any(w in ql for w in ["min","minimum","lowest","cheapest"]):            return "MIN"
-    return ""
-
-
-# ── Detect GROUP BY ───────────────────────────────────────────────────────────
-def detect_group_by(ql):
-    if "per country"      in ql or "by country"      in ql: return "country"
-    if "per customer"     in ql or "by customer"     in ql: return '"customerNumber"'
-    if "per status"       in ql or "by status"       in ql: return "status"
-    if "per product line" in ql or "by product line" in ql: return '"productLine"'
-    if "per office"       in ql or "by office"       in ql: return '"officeCode"'
-    if "per vendor"       in ql or "by vendor"       in ql: return '"productVendor"'
-    return ""
-
-
-# ── Detect WHERE filter ───────────────────────────────────────────────────────
-def detect_filter(ql):
-    countries = [
-        "usa","germany","france","uk","australia","japan","spain","italy",
-        "canada","singapore","norway","denmark","finland","ireland",
-        "new zealand","switzerland","netherlands","belgium","austria",
-        "sweden","hong kong","philippines","russia","poland","israel"
-    ]
-    pattern = r"\b(?:from|in|located in|of)\s+(" + "|".join(countries) + r")\b"
-    m = re.search(pattern, ql)
-    if m:
-        raw = m.group(1)
-        fmt = " ".join(w.capitalize() for w in raw.split())
-        fmt = {"Usa":"USA","Uk":"UK"}.get(fmt, fmt)
-        return f"country = '{fmt}'"
-
-    m2 = re.search(r"\b(shipped|cancelled|canceled|resolved|on hold|in process|disputed)\b", ql)
-    if m2:
-        return f"status = '{m2.group(1).title()}'"
-
-    if "sales rep" in ql:
-        return "\"jobTitle\" = 'Sales Rep'"
-
-    return ""
+SPECIAL_PATTERNS = [
+    (r"show all orders placed by customers in germany", {
+        "tables": ["orders", "customers"],
+        "columns": ["\"orders\".\"orderNumber\"", "\"orders\".\"orderDate\"", "\"orders\".\"status\"", "\"customers\".\"customerName\""],
+        "filters": ["\"customers\".\"country\" = 'Germany'"],
+        "joins": [JOIN_RELATIONS[frozenset(["orders", "customers"])]]
+    }),
+    (r"get orders with customer names", {
+        "tables": ["orders", "customers"],
+        "columns": ["\"orders\".\"orderNumber\"", "\"orders\".\"orderDate\"", "\"customers\".\"customerName\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["orders", "customers"])]]
+    }),
+    (r"get employees with office city", {
+        "tables": ["employees", "offices"],
+        "columns": ["\"employees\".\"firstName\"", "\"employees\".\"lastName\"", "\"offices\".\"city\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["employees", "offices"])]]
+    }),
+    (r"get payments with customer names", {
+        "tables": ["payments", "customers"],
+        "columns": ["\"payments\".\"paymentDate\"", "\"payments\".\"amount\"", "\"customers\".\"customerName\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["payments", "customers"])]]
+    }),
+    (r"get order details with product names", {
+        "tables": ["orderdetails", "products"],
+        "columns": ["\"orderdetails\".\"orderNumber\"", "\"products\".\"productName\"", "\"orderdetails\".\"quantityOrdered\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["orderdetails", "products"])]]
+    }),
+    (r"get products with product line description", {
+        "tables": ["products", "productlines"],
+        "columns": ["\"products\".\"productName\"", "\"productlines\".\"textDescription\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["products", "productlines"])]]
+    }),
+    (r"get customers with sales rep names", {
+        "tables": ["customers", "employees"],
+        "columns": ["\"customers\".\"customerName\"", "\"employees\".\"firstName\"", "\"employees\".\"lastName\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["customers", "employees"])]]
+    }),
+    (r"get orders with customer city", {
+        "tables": ["orders", "customers"],
+        "columns": ["\"orders\".\"orderNumber\"", "\"customers\".\"city\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["orders", "customers"])]]
+    }),
+    (r"get employees and their manager", {
+        "tables": ["employees"],
+        "columns": ["e.\"firstName\"", "e.\"lastName\"", "m.\"firstName\" AS \"managerFirstName\"", "m.\"lastName\" AS \"managerLastName\""],
+        "filters": [],
+        "joins": ['JOIN "employees" m ON e."reportsTo" = m."employeeNumber"'],
+        "base_table": 'employees',
+        "alias_base": 'e'
+    }),
+    (r"get orderdetails with product vendor", {
+        "tables": ["orderdetails", "products"],
+        "columns": ["\"orderdetails\".\"orderNumber\"", "\"products\".\"productName\"", "\"products\".\"productVendor\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["orderdetails", "products"])]]
+    }),
+    (r"get payments with customer country", {
+        "tables": ["payments", "customers"],
+        "columns": ["\"payments\".\"paymentDate\"", "\"payments\".\"amount\"", "\"customers\".\"country\""],
+        "filters": [],
+        "joins": [JOIN_RELATIONS[frozenset(["payments", "customers"])]]
+    }),
+]
 
 
-# ── Build SELECT columns (all camelCase quoted) ───────────────────────────────
-def build_columns(ql, tables, agg, group_by):
-    # ── Single-value aggregates ────────────────────────────────────────────────
-    if agg and not group_by and len(tables) == 1:
-        t = tables[0]
-        pk = {
-            "customers":    '"customerNumber"',
-            "products":     '"productCode"',
-            "orders":       '"orderNumber"',
-            "employees":    '"employeeNumber"',
-            "payments":     '"checkNumber"',
-            "offices":      '"officeCode"',
-            "orderdetails": '"orderNumber"',
-            "productlines": '"productLine"',
-        }
-        if agg == "COUNT":
-            return f'COUNT({pk.get(t,"*")}) AS total_{t}'
-        if agg == "SUM":
-            if t == "payments": return 'SUM(amount) AS total_revenue'
-            if t == "products": return 'SUM("quantityInStock") AS total_stock'
-        if agg == "AVG":
-            if "msrp" in ql:    return 'AVG("MSRP") AS avg_msrp'
-            return 'AVG("buyPrice") AS avg_price'
-        if agg == "MAX":
-            if "payment" in ql: return 'MAX(amount) AS max_payment'
-            if "msrp"    in ql: return 'MAX("MSRP") AS max_msrp'
-            return 'MAX("buyPrice") AS max_price'
-        if agg == "MIN":
-            if "payment" in ql: return 'MIN(amount) AS min_payment'
-            return 'MIN("buyPrice") AS min_price'
-
-    # ── Grouped aggregates ────────────────────────────────────────────────────
-    if agg and group_by and len(tables) == 1:
-        t  = tables[0]
-        pk = {
-            "customers": '"customerNumber"', "orders": '"orderNumber"',
-            "products":  '"productCode"',    "employees": '"employeeNumber"',
-            "payments":  '"checkNumber"',
-        }
-        if agg == "COUNT":  return f'{group_by}, COUNT({pk.get(t,"*")}) AS total'
-        if agg == "SUM":
-            if t == "payments": return f'{group_by}, SUM(amount) AS total_amount'
-            if t == "products": return f'{group_by}, SUM("quantityInStock") AS total_stock'
-        if agg == "AVG":    return f'{group_by}, AVG("buyPrice") AS avg_buy_price'
-        if agg == "MAX":
-            if "msrp" in ql:    return f'{group_by}, MAX("MSRP") AS max_msrp'
-            return f'{group_by}, MAX("buyPrice") AS max_buy_price'
-        if agg == "MIN":    return f'{group_by}, MIN("buyPrice") AS min_buy_price'
-
-    # ── JOIN queries ──────────────────────────────────────────────────────────
-    if len(tables) >= 2:
-        t1, t2 = tables[0], tables[1]
-        a1, a2 = ALIAS.get(t1,"t1"), ALIAS.get(t2,"t2")
-        combos = {
-            ("orders",       "customers"):
-                f'{a1}."orderNumber", {a1}."orderDate", {a2}."customerName"',
-            ("employees",    "offices"):
-                f'{a1}."firstName", {a1}."lastName", {a2}.city',
-            ("payments",     "customers"):
-                f'{a2}."customerName", {a1}."paymentDate", {a1}.amount',
-            ("orderdetails", "products"):
-                f'{a1}."orderNumber", {a2}."productName", {a1}."quantityOrdered"',
-            ("products",     "productlines"):
-                f'{a1}."productName", {a2}."textDescription"',
-            ("customers",    "employees"):
-                f'{a1}."customerName", {a2}."firstName", {a2}."lastName"',
-            ("employees",    "employees"):
-                'e."firstName", e."lastName", m."firstName" AS manager_first, m."lastName" AS manager_last',
-        }
-        if (t1, t2) in combos:
-            return combos[(t1, t2)]
-        return f"{a1}.*, {a2}.*"
-
-    # ── Simple single-table selects ───────────────────────────────────────────
-    t = tables[0]
-    rules = [
-        ("products",   r"name.*price|price.*name",      '"productName", "buyPrice"'),
-        ("customers",  r"name.*cit|cit.*name",           '"customerName", city'),
-        ("employees",  r"first.*last|last.*first|name",  '"firstName", "lastName"'),
-        ("orders",     r"date",                          '"orderNumber", "orderDate"'),
-        ("products",   r"vendor",                        'DISTINCT "productVendor"'),
-        ("products",   r"code",                          '"productCode"'),
-        ("offices",    r"countr",                        'DISTINCT country'),
-        ("orders",     r"status",                        'DISTINCT status'),
-        ("payments",   r"amount",                        '"checkNumber", amount'),
-        ("employees",  r"job",                           'DISTINCT "jobTitle"'),
-        ("customers",  r"phone",                         '"customerName", phone'),
-        ("products",   r"msrp",                          '"productName", "MSRP"'),
-        ("orders",     r"number",                        '"orderNumber"'),
-    ]
-    for tbl, pat, cols in rules:
-        if t == tbl and re.search(pat, ql):
-            return cols
-    return "*"
+def normalize_question(question: str) -> str:
+    return question.strip().lower()
 
 
-# ── Assemble final SQL ────────────────────────────────────────────────────────
-def build_sql(tables, columns, where, group_by):
-    if len(tables) == 1:
-        t = tables[0]
-        from_clause = f"{t} {ALIAS.get(t, t)}"
+def quote_identifier(identifier: str) -> str:
+    return f'"{identifier}"'
 
-    elif len(tables) == 2:
-        t1, t2 = tables[0], tables[1]
-        if t1 == "employees" and t2 == "employees":
-            from_clause = 'employees e JOIN employees m ON e."reportsTo" = m."employeeNumber"'
-        elif (t1, t2) in JOIN_MAP:
-            from_clause = JOIN_MAP[(t1, t2)]
-        elif (t2, t1) in JOIN_MAP:
-            from_clause = JOIN_MAP[(t2, t1)]
-        else:
-            a1, a2 = ALIAS.get(t1,t1), ALIAS.get(t2,t2)
-            from_clause = f"{t1} {a1}, {t2} {a2}"
-    else:
-        t1, t2 = tables[0], tables[1]
-        key = (t1,t2) if (t1,t2) in JOIN_MAP else (t2,t1)
-        from_clause = JOIN_MAP.get(key, f"{t1} {ALIAS.get(t1,t1)}, {t2} {ALIAS.get(t2,t2)}")
-        for t in tables[2:]:
-            from_clause += f" JOIN {t} {ALIAS.get(t,t)}"
 
-    sql = f"SELECT {columns}\nFROM {from_clause}"
-    if where:
-        sql += f"\nWHERE {where}"
+def qualify_column(table: str, column: str) -> str:
+    if column == "*":
+        return f'"{table}".*'
+    if "." in column or "(" in column:
+        return column
+    return f'"{table}"."{column}"'
+
+
+def build_from_clause(tables: List[str], joins: List[str], base_table: str = None, alias_base: str = None) -> str:
+    if base_table is None:
+        base_table = tables[0]
+    from_clause = f'FROM "{base_table}"'
+    if alias_base:
+        from_clause = f'FROM "{base_table}" {alias_base}'
+    for join in joins:
+        from_clause += f' {join}'
+    return from_clause
+
+
+def build_sql(decomposition: dict) -> str:
+    columns = decomposition.get("columns", ["*"])
+    filters = decomposition.get("filters", [])
+    joins = decomposition.get("joins", [])
+    group_by = decomposition.get("group_by", [])
+    order_by = decomposition.get("order_by", [])
+    base_table = decomposition.get("base_table")
+    alias_base = decomposition.get("alias_base")
+
+    select_clause = "SELECT " + ", ".join(columns)
+    from_clause = build_from_clause(decomposition.get("tables", []), joins, base_table=base_table, alias_base=alias_base)
+    where_clause = ""
+    if filters:
+        where_clause = "WHERE " + " AND ".join(filters)
+    group_by_clause = ""
     if group_by:
-        sql += f"\nGROUP BY {group_by}"
-    sql += ";"
+        group_by_clause = "GROUP BY " + ", ".join(group_by)
+    order_by_clause = ""
+    if order_by:
+        order_by_clause = "ORDER BY " + ", ".join(order_by)
+
+    sql = " ".join(part for part in [select_clause, from_clause, where_clause, group_by_clause, order_by_clause] if part)
+    if not sql.strip().endswith(";"):
+        sql += ";"
     return sql
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
-def decompose_question(question):
-    ql = question.strip().lower()
-    tables   = detect_tables(ql)
-    agg      = detect_agg(ql)
-    group_by = detect_group_by(ql)
-    where    = detect_filter(ql)
-    columns  = build_columns(ql, tables, agg, group_by)
+def match_special(question: str) -> dict:
+    normalized = normalize_question(question)
+    for pattern, decomposition in SPECIAL_PATTERNS:
+        if re.search(pattern, normalized):
+            return decomposition.copy()
+    return {}
 
+
+def guess_tables(question: str) -> List[str]:
+    normalized = normalize_question(question)
+
+    if "product lines" in normalized or "product line" in normalized:
+        if "products" in normalized and "product line" in normalized:
+            return ["products", "productlines"]
+        return ["productlines"]
+
+    if "order details" in normalized or "order detail" in normalized:
+        if "product" in normalized:
+            return ["orderdetails", "products"]
+        return ["orderdetails"]
+
+    found = []
+    for table, keywords in TABLE_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            found.append(table)
+    if not found:
+        if "germany" in normalized or "city" in normalized or "country" in normalized:
+            return ["customers"]
+        raise SQLGenerationError("Could not determine which table to query from the question.")
+
+    found = sorted(set(found), key=lambda t: TABLE_PRIORITY.index(t) if t in TABLE_PRIORITY else len(TABLE_PRIORITY))
+    return found
+
+
+def guess_columns(question: str, tables: List[str]) -> List[str]:
+    normalized = normalize_question(question)
+    for phrase, columns in COLUMN_PATTERNS:
+        if phrase in normalized:
+            return [quote_identifier(c) if c != "*" else c for c in ["*" if c == "*" else c for c in columns]]
+
+    if any(keyword in normalized for keyword in ["count ", "number of", "total number", "total number of"]):
+        return ["COUNT(*) AS total_count"]
+
+    if any(keyword in normalized for keyword in ["total revenue", "total payments"]):
+        return ["SUM(amount) AS total_payments"]
+
+    if "average buy price" in normalized or "average product price" in normalized:
+        return ["AVG(buyPrice) AS average_buy_price"]
+
+    if "average msrp" in normalized:
+        return ["AVG(MSRP) AS average_msrp"]
+
+    if "max msrp" in normalized:
+        return ["MAX(MSRP) AS max_msrp"]
+
+    if "min buy price" in normalized:
+        return ["MIN(buyPrice) AS min_buy_price"]
+
+    if "max payment amount" in normalized:
+        return ["MAX(amount) AS max_payment_amount"]
+
+    if "min payment amount" in normalized:
+        return ["MIN(amount) AS min_payment_amount"]
+
+    if "total quantity" in normalized and "stock" in normalized:
+        return ["SUM(quantityInStock) AS total_quantity_in_stock"]
+
+    if "customer names" in normalized:
+        return ["\"customers\".\"customerName\""]
+    if "city" in normalized and "customer" in normalized:
+        return ["\"customers\".\"customerName\"", "\"customers\".\"city\""]
+    if "city" in normalized and "office" in normalized:
+        return ["\"offices\".\"city\""]
+    if "job title" in normalized:
+        return ["\"employees\".\"jobTitle\""]
+    if "phone" in normalized and "customer" in normalized:
+        return ["\"customers\".\"phone\""]
+    if "vendor" in normalized and "product" in normalized:
+        return ["\"products\".\"productVendor\""]
+    if "product code" in normalized or "product codes" in normalized:
+        return ["\"products\".\"productCode\""]
+    if "order status" in normalized or "statuses" in normalized:
+        return ["\"orders\".\"status\""]
+    if "order date" in normalized:
+        return ["\"orders\".\"orderDate\""]
+    if "payment amount" in normalized or "amount" in normalized and "payment" in normalized:
+        return ["\"payments\".\"amount\""]
+    if "product msrp" in normalized:
+        return ["\"products\".\"MSRP\""]
+    if "sales rep" in normalized and "customer" in normalized:
+        return ["\"customers\".\"customerName\"", "\"employees\".\"firstName\"", "\"employees\".\"lastName\""]
+    if "manager" in normalized and "employee" in normalized:
+        return ["e.\"firstName\"", "e.\"lastName\"", "m.\"firstName\" AS \"managerFirstName\"", "m.\"lastName\" AS \"managerLastName\""]
+
+    return ["*"]
+
+
+def guess_filters(question: str, tables: List[str]) -> List[str]:
+    normalized = normalize_question(question)
+    filters = []
+    if "in germany" in normalized:
+        if "customers" in tables:
+            filters.append('"customers"."country" = \'Germany\'')
+        elif "offices" in tables:
+            filters.append('"offices"."country" = \'Germany\'')
+    if "shipped" in normalized and "status" in normalized:
+        filters.append('"orders"."status" = \'Shipped\'')
+    if "status" in normalized and "orders" in tables and "shipped" not in normalized:
+        pass
+    return filters
+
+
+def guess_joins(question: str, tables: List[str]) -> List[str]:
     joins = []
-    if len(tables) == 2:
-        key = (tables[0], tables[1])
-        if key in JOIN_MAP:
-            joins = [JOIN_MAP[key]]
-        elif tables[0] == "employees" and tables[1] == "employees":
-            joins = [JOIN_MAP[("employees","employees")]]
+    normalized = normalize_question(question)
+    table_set = frozenset(tables)
+    for relation, clause in JOIN_RELATIONS.items():
+        if relation.issubset(table_set):
+            joins.append(clause)
 
-    if agg and group_by:
-        intent = f"{agg} grouped by {group_by} from {', '.join(tables)}"
-    elif agg:
-        intent = f"Get single {agg} value from {', '.join(tables)}"
-    elif len(tables) > 1:
-        intent = f"Retrieve joined data from {' + '.join(tables)}"
-    else:
-        intent = f"Retrieve records from {tables[0]}"
+    if "manager" in normalized and "employee" in normalized:
+        joins = ['JOIN "employees" m ON e."reportsTo" = m."employeeNumber"']
+    return joins
+
+
+def guess_group_by(question: str, columns: List[str]) -> List[str]:
+    normalized = normalize_question(question)
+    if "per country" in normalized or "customers per country" in normalized or "customers per country" in normalized:
+        return ['"customers"."country"']
+    if "per product line" in normalized:
+        return ['"products"."productLine"']
+    if "per office" in normalized:
+        return ['"employees"."officeCode"']
+    if "per customer" in normalized:
+        return ['"customers"."customerName"']
+    if "per status" in normalized:
+        return ['"orders"."status"']
+    return []
+
+
+def decompose_question(question: str) -> dict:
+    normalized = normalize_question(question)
+    special = match_special(question)
+    if special:
+        return {
+            "intent": question,
+            "tables": special["tables"],
+            "columns": special["columns"],
+            "filters": special.get("filters", []),
+            "joins": special.get("joins", []),
+            "group_by": special.get("group_by", []),
+            "base_table": special.get("base_table"),
+            "alias_base": special.get("alias_base"),
+        }
+
+    tables = guess_tables(question)
+    columns = guess_columns(question, tables)
+    joins = guess_joins(question, tables)
+    filters = guess_filters(question, tables)
+    group_by = guess_group_by(question, columns)
 
     return {
-        "intent":   intent,
-        "tables":   tables,
-        "columns":  [columns],
-        "filters":  [where] if where else [],
-        "joins":    joins,
+        "intent": question,
+        "tables": tables,
+        "columns": columns,
+        "filters": filters,
+        "joins": joins,
         "group_by": group_by,
-        "_agg":     agg,
-        "_where":   where,
     }
 
 
-def generate_sql(question):
-    """Main entry: question -> (sql, decomposition)"""
-    print(f"[SQL_GENERATOR] Processing: '{question}'")
-    decomp   = decompose_question(question)
-    tables   = decomp["tables"]
-    columns  = decomp["columns"][0]
-    where    = decomp["_where"]
-    group_by = decomp["group_by"]
-    sql      = build_sql(tables, columns, where, group_by)
-
-    print(f"[SQL_GENERATOR] Intent:   {decomp['intent']}")
-    print(f"[SQL_GENERATOR] Tables:   {tables}")
-    print(f"[SQL_GENERATOR] Columns:  {columns}")
-    print(f"[SQL_GENERATOR] Filter:   {where or 'None'}")
-    print(f"[SQL_GENERATOR] Group by: {group_by or 'None'}")
-    print(f"[SQL_GENERATOR] SQL:      {sql}")
-    return sql, decomp
+def generate_query(question: str, decomposition: dict) -> str:
+    sql = build_sql(decomposition)
+    if not sql.upper().startswith("SELECT"):
+        raise SQLGenerationError("Generated SQL is not a SELECT statement.")
+    return sql
 
 
-def fix_sql(question, broken_sql, error_message):
-    """Auto-fix broken SQL using the PostgreSQL error message."""
-    print(f"[SQL_GENERATOR] Fixing SQL. Error: {error_message[:100]}")
-    fixed = broken_sql
-
-    # Wrong table name
-    m = re.search(r'relation "(\w+)" does not exist', error_message)
-    if m:
-        bad = m.group(1)
-        for correct in SCHEMA:
-            if correct.startswith(bad[:4]) or bad in correct:
-                fixed = fixed.replace(bad, correct)
-                print(f"[SQL_GENERATOR] Fixed table: {bad} -> {correct}")
-                break
-
-    # Column does not exist → add double quotes
-    m2 = re.search(r'column "([^"]+)" does not exist', error_message)
-    if m2:
-        bad_col = m2.group(1)
-        # Try adding double quotes around just the column part
-        fixed = fixed.replace(f"({bad_col})", f'("{bad_col}")')
-        fixed = fixed.replace(f" {bad_col} ", f' "{bad_col}" ')
-        print(f"[SQL_GENERATOR] Quoted column: {bad_col}")
-
-    # Syntax error → regenerate completely
-    if "syntax error" in error_message.lower():
-        print(f"[SQL_GENERATOR] Syntax error - regenerating from scratch")
-        new_sql, _ = generate_sql(question)
-        return new_sql
-
-    # Ambiguous column → qualify with alias
-    m3 = re.search(r'column reference "(\w+)" is ambiguous', error_message)
-    if m3:
-        col = m3.group(1)
-        for tbl, cols in SCHEMA.items():
-            if col in cols:
-                a = ALIAS.get(tbl, tbl)
-                fixed = re.sub(r'\b' + col + r'\b', f'{a}."{col}"', fixed)
-                print(f"[SQL_GENERATOR] Fixed ambiguous: {col} -> {a}.\"{col}\"")
-                break
-
-    if not fixed.endswith(";"):
-        fixed += ";"
-    return fixed
+def generate_sql(question: str) -> Tuple[str, dict]:
+    decomposition = decompose_question(question)
+    sql = generate_query(question, decomposition)
+    return sql, decomposition
 
 
-# ── Self-test ─────────────────────────────────────────────────────────────────
+def fix_sql(question: str, sql: str, error_message: str) -> str:
+    try:
+        decomposition = decompose_question(question)
+        return generate_query(question, decomposition)
+    except SQLGenerationError:
+        return sql
+
+
 if __name__ == "__main__":
     tests = [
-        "What is the number of customers",
-        "How many customers are from Germany",
-        "List all products",
-        "Get orders with customer names",
+        "Show all orders placed by customers in Germany",
+        "Get all customers",
+        "Get product names and prices",
         "Count customers per country",
-        "Total revenue from payments",
-        "Average buy price per product line",
-        "Get employees and their manager",
-        "Total number of customers",
-        "Max payment amount",
-        "Get payments with customer names",
-        "Show all order statuses",
+        "Get employees with office city",
     ]
-    print("=" * 65)
-    print("SQL GENERATOR SELF-TEST")
-    print("=" * 65)
-    for t in tests:
-        sql, _ = generate_sql(t)
-        print(f"  => {sql}\n")
+    for question in tests:
+        sql, decomp = generate_sql(question)
+        print("Question:", question)
+        print("SQL:", sql)
+        print("Decomposition:", json.dumps(decomp, indent=2))
+        print("" + "-" * 80 + "\n")

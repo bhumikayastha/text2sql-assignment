@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Text-to-SQL Pipeline{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        nav {
+            background: #f8f9fa;
+            padding: 0;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 0;
+        }
+        
+        nav a {
+            padding: 15px 25px;
+            text-decoration: none;
+            color: #333;
+            border-right: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+        
+        nav a:last-child {
+            border-right: none;
+        }
+        
+        nav a:hover {
+            background: #e9ecef;
+            color: #667eea;
+        }
+        
+        nav a.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        main {
+            padding: 40px;
+            min-height: 500px;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #c3e6cb;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+            }
+            
+            nav a {
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            
+            nav a:last-child {
+                border-bottom: none;
+            }
+            
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            main {
+                padding: 20px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Text-to-SQL Pipeline</h1>
+            <p>Convert natural language questions to SQL queries</p>
+        </header>
+        
+        <nav>
+            <a href="/" class="{% block nav_home %}{% endblock %}">Home</a>
+            <a href="/benchmark" class="{% block nav_benchmark %}{% endblock %}">Benchmark Results</a>
+        </nav>
+        
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 Text-to-SQL Pipeline | PostgreSQL + FastAPI</p>
+        </footer>
+    </div>
+</body>
+</html>

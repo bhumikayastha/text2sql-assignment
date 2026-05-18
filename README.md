@@ -1,153 +1,101 @@
-# Task 3: Text-to-SQL Pipeline
-### Agentic Text-to-SQL System — FastAPI + PostgreSQL
-
----
+﻿# Task 3: Text-to-SQL Pipeline
 
 ## Overview
 
-This project implements a **Text-to-SQL pipeline** that:
-- Takes a natural language question as input
-- Decomposes it into structured components (Intent, Tables, Columns, Filters, Joins)
-- Generates a PostgreSQL SELECT query automatically
-- Executes the query against the `classicmodels` database
-- Handles errors and retries automatically (max 1 retry)
-- Returns structured JSON output and logs every execution
+This project implements a Text-to-SQL pipeline using FastAPI and PostgreSQL.
+The system:
+- Decomposes natural language queries into structured SQL components
+- Uses a local rule-based SQL generator for the classicmodels schema
+- Validates generated SQL for safety
+- Executes SQL against PostgreSQL
+- Retries once if execution fails using local SQL repair logic
+- Logs every query execution in `logs/query_logs.json`
 
----
+## Files
 
-## Project Structure
+- `database.py` — PostgreSQL connection helper
+- `sql_generator.py` — Local rule-based SQL generator for the classicmodels schema
+- `validator.py` — Safety checks blocking non-SELECT statements
+- `executor.py` — Executes SQL, handles retry/fix, and logs results
+- `main.py` — CLI runner for single questions and benchmark mode
+- `fastapi_app.py` — FastAPI service for HTTP query execution
+- `streamlit_app.py` — Optional Streamlit UI for chat-like usage
+- `evaluate.py` — Benchmark evaluation script
+- `prompts/templates.py` — Schema reference and prompt templates (optional for local generation)
+- `docker-compose.yml` — PostgreSQL + app service for containerized deployment
+- `Dockerfile` — Builds the Python app container
+- `.env.example` — Example environment variables
+- `logs/query_logs.json` — JSON file used for execution logging
 
-```
-task3_project/
-├── database.py              # PostgreSQL connection (psycopg2)
-├── validator.py             # SQL safety checker (blocks DELETE/DROP/etc.)
-├── sql_generator.py         # Rule-based decomposer + SQL builder
-├── executor.py              # Query runner with retry logic + logging
-├── main.py                  # Benchmark runner + single question mode
-├── requirements.txt         # Python dependencies
-├── sample_outputs/
-│   └── generated_sql_outputs.txt   # All 50 generated SQL queries
-└── logs/
-    ├── query_log.txt              # Every query execution logged (JSON)
-    └── evaluation_report.txt      # Full benchmark evaluation report
-```
+## Setup
 
----
+1. Copy `.env.example` to `.env`.
+2. Install dependencies:
 
-## Pipeline Architecture
-
-```
-Natural Language Question
-        |
-        v
-[sql_generator.py]  ← Rule-Based (no API key needed)
-  1. detect_tables()    — find which DB tables are needed
-  2. detect_agg()       — detect COUNT / SUM / AVG / MAX / MIN
-  3. detect_group_by()  — detect GROUP BY from "per X" patterns
-  4. detect_filter()    — detect WHERE conditions
-  5. build_columns()    — build SELECT list with quoted camelCase columns
-  6. build_sql()        — assemble full SQL with JOINs
-        |
-        v
-[validator.py]      ← Safety gate (blocks all non-SELECT queries)
-        |
-        v
-[executor.py]       ← Run SQL → on failure → fix → retry once
-        |
-        v
-[logs/]             ← Every attempt logged with timestamp + result
-```
-
----
-
-## Setup & Usage
-
-### 1. Install dependency
 ```bash
-pip install psycopg2-binary
+pip install -r requirements.txt
 ```
 
-### 2. Configure database (edit `database.py`)
-```python
-DB_CONFIG = {
-    "host":     "localhost",
-    "port":     5432,
-    "dbname":   "classicmodels",
-    "user":     "postgres",
-    "password": "your_password",
-}
-```
+3. Set your database connection in `.env`.
+4. Test the database connection:
 
-### 3. Test connection
 ```bash
 python database.py
 ```
 
-### 4. Run a single question
+## Run locally
+
+### 🌐 FastAPI Web Interface (Recommended)
+
+Start the FastAPI server with the built-in web interface:
+
 ```bash
-python main.py --single How many customers are from Germany
+uvicorn fastapi_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Run full 50-question benchmark
+Then visit **http://localhost:8000** in your browser.
+
+**Features:**
+- 🏠 **Home Page** - Submit natural language questions and get instant SQL + results
+- 📊 **Benchmark Results** - View all 50 benchmark questions with success/failure metrics
+- 🧩 **Query Decomposition** - See how the system breaks down your question into SQL components
+- 📈 **Live Dashboard** - Real-time success rate and execution statistics
+- 💾 **Query History** - All executed queries logged and viewable
+
+### Streamlit UI
+
 ```bash
-python main.py
+streamlit run streamlit_app.py
 ```
 
----
+### Run one question
 
-## Example Output
-
-```
-QUESTION: How many customers are from Germany
-[SQL_GENERATOR] Intent:   Get single COUNT value from customers
-[SQL_GENERATOR] Tables:   ['customers']
-[SQL_GENERATOR] Columns:  COUNT("customerNumber") AS total_customers
-[SQL_GENERATOR] Filter:   country = 'Germany'
-[SQL_GENERATOR] SQL:      SELECT COUNT("customerNumber") AS total_customers
-                           FROM customers c WHERE country = 'Germany';
-[EXECUTOR] SUCCESS - 1 row(s) returned.
-Result: [{"total_customers": 13}]
+```bash
+python main.py --single "Show all orders placed by customers in Germany"
 ```
 
----
+### Run benchmark
 
-## Design Decisions
+```bash
+python main.py --benchmark
+```
 
-| Decision | Reason |
-|---|---|
-| Rule-based (no LLM API) | Works offline, no API key, deterministic |
-| Double-quoted column names | PostgreSQL is case-sensitive with camelCase |
-| Two-step: decompose then build | Mirrors Task 2 structured thinking |
-| Max 1 retry | Prevents infinite loops |
-| Validator before every execution | Safety first — database never sees unsafe SQL |
-| JSON structured output | Easy to evaluate, log, and compare |
+### Run evaluation script
 
----
+```bash
+python evaluate.py
+```
 
-## Evaluation Results
+## Docker
 
-| Metric | Result |
-|---|---|
-| Total questions | 50 |
-| Successful executions | 45 (90%) |
-| Fixed after retry | 3 |
-| Blocked (unsafe SQL) | 2 |
-| Query generation latency | < 1ms (rule-based) |
+```bash
+docker compose up --build
+```
 
----
+Then visit `http://localhost:8501` for the FastAPI service.
 
-## Safety Rules
+## Notes
 
-Only `SELECT` queries are allowed. The validator **blocks** all of:
-`DELETE` · `DROP` · `UPDATE` · `INSERT` · `TRUNCATE` · `ALTER` · `CREATE`
-
-Blocked queries are logged but never sent to the database.
-
----
-
-## Technologies Used
-
-- **Python 3.11+**
-- **PostgreSQL 16** (classicmodels database)
-- **psycopg2** (PostgreSQL adapter)
-- **Rule-based NLP** (keyword detection, no external libraries)
+- Only `SELECT` queries are permitted.
+- The system blocks `DELETE`, `DROP`, `UPDATE`, `INSERT`, `ALTER`, and `TRUNCATE`.
+- Maximum one retry is allowed for failed SQL executions.

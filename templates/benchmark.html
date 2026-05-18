@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Benchmark Results - Text-to-SQL Pipeline{% endblock %}
+{% block nav_benchmark %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        display: grid;
+        gap: 20px;
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .metric-card.success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .metric-card.failed {
+        background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    }
+    
+    .metric-card.rate {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    }
+    
+    .metric-value {
+        font-size: 2.5em;
+        font-weight: 700;
+        display: block;
+        margin: 10px 0;
+    }
+    
+    .metric-label {
+        font-size: 0.95em;
+        opacity: 0.9;
+    }
+    
+    .report-text {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: #333;
+        max-height: 600px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .query-logs {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .query-log-item {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .query-log-item:last-child {
+        border-bottom: none;
+    }
+    
+    .query-log-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .query-number {
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+    
+    .query-question {
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .query-status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    
+    .query-status.success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .query-status.failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .query-status.blocked {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .query-sql {
+        background: #f5f5f5;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        color: #333;
+        overflow-x: auto;
+    }
+    
+    .query-rows {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .section-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #333;
+        margin: 30px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #667eea;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    
+    .loading::after {
+        content: '.';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    
+    @keyframes dots {
+        0%, 20% { content: ''; }
+        40% { content: '.'; }
+        60% { content: '..'; }
+        80%, 100% { content: '...'; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <h2>📊 Benchmark Results</h2>
+    
+    <div id="metrics" class="metrics-grid" style="display: none;">
+        <div class="metric-card">
+            <span class="metric-label">Total Questions</span>
+            <span class="metric-value" id="total">0</span>
+        </div>
+        <div class="metric-card success">
+            <span class="metric-label">Successful</span>
+            <span class="metric-value" id="successful">0</span>
+        </div>
+        <div class="metric-card failed">
+            <span class="metric-label">Failed</span>
+            <span class="metric-value" id="failed">0</span>
+        </div>
+        <div class="metric-card rate">
+            <span class="metric-label">Success Rate</span>
+            <span class="metric-value" id="rate">0%</span>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading">Loading benchmark data</div>
+    
+    <div id="content" style="display: none;">
+        {% if report %}
+        <div class="section-title">📋 Full Report</div>
+        <div class="report-text">{{ report }}</div>
+        {% endif %}
+        
+        <div class="section-title">📝 Query Execution Log</div>
+        <div class="query-logs" id="logsContainer">
+            <div class="loading">Loading query logs</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadBenchmarkData() {
+        try {
+            const response = await fetch('/api/benchmark');
+            const data = await response.json();
+            
+            // Update metrics
+            document.getElementById('total').textContent = data.total_questions;
+            document.getElementById('successful').textContent = data.successful;
+            document.getElementById('failed').textContent = data.failed;
+            document.getElementById('rate').textContent = data.success_rate + '%';
+            
+            document.getElementById('metrics').style.display = 'grid';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Populate query logs
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = '';
+            
+            if (data.logs && data.logs.length > 0) {
+                data.logs.forEach((log, index) => {
+                    const statusClass = log.status.toLowerCase();
+                    const item = document.createElement('div');
+                    item.className = 'query-log-item';
+                    item.innerHTML = `
+                        <div class="query-number">Q${index + 1}: ${log.question}</div>
+                        <span class="query-status ${statusClass}">${log.status.toUpperCase()}</span>
+                        <div class="query-sql"><strong>SQL:</strong> ${escapeHtml(log.sql)}</div>
+                        <div class="query-rows">Rows: ${log.row_count} | ${log.error ? '❌ ' + log.error : '✅ Success'}</div>
+                    `;
+                    logsContainer.appendChild(item);
+                });
+            } else {
+                logsContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">No query logs found. Run benchmark to generate data.</div>';
+            }
+        } catch (error) {
+            console.error('Error loading benchmark data:', error);
+            document.getElementById('loading').innerHTML = '❌ Error loading benchmark data';
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Load data when page loads
+    loadBenchmarkData();
+</script>
+{% endblock %}

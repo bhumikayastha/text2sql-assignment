@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Text-to-SQL Pipeline{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .query-form {
+        background: #f8f9fa;
+        padding: 30px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    input, textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 1em;
+        resize: vertical;
+    }
+    
+    input:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    textarea {
+        min-height: 100px;
+    }
+    
+    button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:active {
+        transform: translateY(0);
+    }
+    
+    .examples {
+        background: #e7f3ff;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #2196F3;
+        margin-top: 30px;
+    }
+    
+    .examples h3 {
+        color: #1976D2;
+        margin-bottom: 15px;
+    }
+    
+    .example-item {
+        background: white;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+    }
+    
+    .example-item:hover {
+        background: #f0f8ff;
+        border-left-color: #2196F3;
+    }
+    
+    .example-item:last-child {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="query-form">
+    <h2>Ask a Question</h2>
+    <p style="color: #666; margin-bottom: 20px;">Enter a natural language question and we'll convert it to SQL for you.</p>
+    
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    
+    <form method="post" action="/query">
+        <div class="form-group">
+            <label for="question">Your Question:</label>
+            <textarea name="question" id="question" placeholder="e.g., Show all orders placed by customers in Germany" required></textarea>
+        </div>
+        <button type="submit">Generate & Execute SQL</button>
+    </form>
+</div>
+
+<div class="examples">
+    <h3>Example Questions</h3>
+    <div class="example-item">📊 Show all orders placed by customers in Germany</div>
+    <div class="example-item">💰 What is the total revenue from payments?</div>
+    <div class="example-item">📈 How many products are in each product line?</div>
+    <div class="example-item">👥 List all customers with their total order amounts</div>
+    <div class="example-item">🏢 Show employees grouped by office</div>
+</div>
+
+<div style="margin-top: 40px; padding: 20px; background: #f0f4ff; border-radius: 8px;">
+    <h3>About This Tool</h3>
+    <p style="color: #555; line-height: 1.6;">
+        This Text-to-SQL pipeline automatically converts natural language questions into SQL queries using:
+    </p>
+    <ul style="color: #555; line-height: 1.8; margin-left: 20px; margin-top: 10px;">
+        <li>🤖 <strong>Rule-based SQL Generation</strong> - Intelligent pattern matching and keyword detection</li>
+        <li>✅ <strong>Query Validation</strong> - Safety checks to ensure only SELECT queries are executed</li>
+        <li>🔄 <strong>Automatic Retry Logic</strong> - Attempts to fix queries that fail on first execution</li>
+        <li>📊 <strong>Comprehensive Logging</strong> - Every query is tracked for evaluation and improvement</li>
+    </ul>
+</div>
+{% endblock %}

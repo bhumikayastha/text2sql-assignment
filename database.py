@@ -1,59 +1,54 @@
 """
 database.py
 -----------
-Handles the PostgreSQL database connection.
-Uses psycopg2 to connect to the classicmodels database.
+PostgreSQL connection helper using environment variables.
 
-HOW TO USE:
-    from database import get_connection
-    conn = get_connection()
+The module uses DATABASE_URL when available, or falls back to
+individual PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD settings.
 """
 
+import os
+from dotenv import load_dotenv
 import psycopg2
-import psycopg2.extras
+from psycopg2.extras import RealDictCursor
 
-# ─── DATABASE CONFIGURATION ───────────────────────────────────────────────────
-# Change these values to match YOUR PostgreSQL setup.
-DB_CONFIG = {
-    "host":     "localhost",
-    "port":     5432,
-    "dbname":   "classicmodels",   # Your database name
-    "user":     "postgres",        # Your PostgreSQL username
-    "password": "your_password",   # Your PostgreSQL password
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DEFAULT_DB_CONFIG = {
+    "host": os.getenv("PGHOST", "localhost"),
+    "port": int(os.getenv("PGPORT", 5432)),
+    "dbname": os.getenv("PGDATABASE", "classicmodels"),
+    "user": os.getenv("PGUSER", "postgres"),
+    "password": os.getenv("PGPASSWORD", "postgres"),
 }
 
 
 def get_connection():
-    """
-    Opens and returns a new PostgreSQL connection.
-    Call this each time you need a fresh connection.
-    """
+    """Return a fresh PostgreSQL connection."""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        return conn
-    except psycopg2.OperationalError as e:
-        print(f"[DATABASE ERROR] Could not connect to database: {e}")
+        if DATABASE_URL:
+            return psycopg2.connect(DATABASE_URL)
+        return psycopg2.connect(**DEFAULT_DB_CONFIG)
+    except psycopg2.OperationalError as exc:
+        print(f"[DATABASE] Connection error: {exc}")
         raise
 
 
 def test_connection():
-    """
-    Quick test to check if the database connection works.
-    Run this file directly: python database.py
-    """
+    """Run a simple test query to verify PostgreSQL connectivity."""
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT version();")
         version = cursor.fetchone()
-        print(f"[DATABASE] Connected successfully!")
+        print("[DATABASE] Connected successfully!")
         print(f"[DATABASE] PostgreSQL version: {version[0]}")
         cursor.close()
         conn.close()
-    except Exception as e:
-        print(f"[DATABASE] Connection failed: {e}")
+    except Exception as exc:
+        print(f"[DATABASE] Connection failed: {exc}")
 
 
-# Run test when file is executed directly
 if __name__ == "__main__":
     test_connection()

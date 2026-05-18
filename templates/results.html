@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Results - Text-to-SQL Pipeline{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-container {
+        display: grid;
+        gap: 20px;
+    }
+    
+    .result-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .result-section h3 {
+        color: #667eea;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+    }
+    
+    .result-section.success {
+        border-left-color: #28a745;
+        background: #d4edda;
+    }
+    
+    .result-section.success h3 {
+        color: #155724;
+    }
+    
+    .result-section.error {
+        border-left-color: #dc3545;
+        background: #f8d7da;
+    }
+    
+    .result-section.error h3 {
+        color: #721c24;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+    
+    .status-badge.success {
+        background: #28a745;
+        color: white;
+    }
+    
+    .status-badge.failed {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .status-badge.blocked {
+        background: #ffc107;
+        color: #333;
+    }
+    
+    code {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .sql-box {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95em;
+        line-height: 1.4;
+        margin: 10px 0;
+    }
+    
+    .question-display {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 3px solid #667eea;
+        font-size: 1.05em;
+        color: #333;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin: 10px 0;
+    }
+    
+    table thead {
+        background: #667eea;
+        color: white;
+    }
+    
+    table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    table tr:hover {
+        background: #f5f5f5;
+    }
+    
+    .decomposition {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #e0e0e0;
+        font-size: 0.95em;
+    }
+    
+    .decomposition strong {
+        color: #667eea;
+    }
+    
+    .decomposition-item {
+        margin: 8px 0;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 30px;
+        color: #999;
+    }
+    
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .back-link:hover {
+        text-decoration: underline;
+    }
+    
+    .row-count {
+        color: #666;
+        font-size: 0.95em;
+        font-weight: 500;
+    }
+    
+    .error-message {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+        padding: 12px;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link">← Ask Another Question</a>
+
+<div class="results-container">
+    <!-- Question Display -->
+    <div class="result-section">
+        <h3>📝 Your Question</h3>
+        <div class="question-display">{{ question }}</div>
+    </div>
+    
+    <!-- Status -->
+    <div class="result-section {% if status == 'success' %}success{% elif status == 'blocked' %}{% else %}error{% endif %}">
+        <h3>Status</h3>
+        <span class="status-badge {{ status }}">{{ status.upper() }}</span>
+        {% if error %}
+        <div class="error-message">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Generated SQL -->
+    <div class="result-section">
+        <h3>🔨 Generated SQL</h3>
+        <div class="sql-box">{{ sql }}</div>
+    </div>
+    
+    <!-- Decomposition -->
+    <div class="result-section">
+        <h3>🧩 Query Decomposition</h3>
+        <div class="decomposition">
+            {% if decomposition %}
+                {% if decomposition.get('intent') %}
+                <div class="decomposition-item">
+                    <strong>Intent:</strong> {{ decomposition.intent }}
+                </div>
+                {% endif %}
+                
+                {% if decomposition.get('tables') %}
+                <div class="decomposition-item">
+                    <strong>Tables:</strong> 
+                    {% for table in decomposition.tables %}
+                        <code>{{ table }}</code>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if decomposition.get('columns') %}
+                <div class="decomposition-item">
+                    <strong>Columns:</strong>
+                    <div style="margin-left: 20px;">
+                    {% for col in decomposition.columns %}
+                        <div><code>{{ col }}</code></div>
+                    {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if decomposition.get('filters') %}
+                <div class="decomposition-item">
+                    <strong>Filters:</strong>
+                    <div style="margin-left: 20px;">
+                    {% for filter in decomposition.filters %}
+                        <div><code>{{ filter }}</code></div>
+                    {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if decomposition.get('joins') %}
+                <div class="decomposition-item">
+                    <strong>Joins:</strong>
+                    <div style="margin-left: 20px;">
+                    {% for join in decomposition.joins %}
+                        <div><code>{{ join }}</code></div>
+                    {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            {% else %}
+                <p>No decomposition data available.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Results Table -->
+    <div class="result-section">
+        <h3>📊 Query Results</h3>
+        <div class="row-count">Total Rows: <strong>{{ row_count }}</strong></div>
+        
+        {% if rows %}
+            <table>
+                <thead>
+                    <tr>
+                        {% for col in rows[0].keys() %}
+                            <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            {% for col in row.keys() %}
+                                <td>{{ row[col] }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="no-results">
+                📭 No rows returned from the database
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
