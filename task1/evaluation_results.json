@@ -1,0 +1,32 @@
+[
+  {
+    "question_id": 41,
+    "question": "Total number of customers",
+    "ground_truth_sql": "SELECT COUNT(*) AS \"totalCustomers\" FROM customers;",
+    "predicted_sql": "SELECT COUNT(*) AS \"totalCustomers\" FROM customers;",
+    "exact_match": true,
+    "execution_success": true,
+    "execution_accuracy": true,
+    "execution_time_ms": 0.0
+  },
+  {
+    "question_id": 42,
+    "question": "Total number of products",
+    "ground_truth_sql": "SELECT COUNT(*) AS \"totalProducts\" FROM products;",
+    "predicted_sql": "SELECT COUNT(*) AS \"totalProducts\" FROM products;",
+    "exact_match": true,
+    "execution_success": true,
+    "execution_accuracy": true,
+    "execution_time_ms": 0.0
+  },
+  {
+    "question_id": 43,
+    "question": "Total revenue from payments",
+    "ground_truth_sql": "SELECT ROUND(SUM(\"amount\"), 2) AS \"totalRevenue\" FROM payments;",
+    "predicted_sql": "SELECT ROUND(SUM(\"amount\"), 2) AS \"totalRevenue\" FROM payments;",
+    "exact_match": true,
+    "execution_success": true,
+    "execution_accuracy": true,
+    "execution_time_ms": 2.02
+  }
+]
